@@ -4,7 +4,7 @@ Ambiente desta conferência: Windows, Python 3.12.14, SQLite 3.53.1 e cryptograp
 
 ## Resultado
 
-- 70 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência, inicialização e consulta CNPJ.
+- 72 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência, inicialização e consulta CNPJ na empresa e nos clientes.
 - Cinco suítes JavaScript aprovadas: cálculos comerciais, operação, alterações por entidade, retorno do login e preenchimento da empresa.
 - Sintaxe dos arquivos JavaScript verificada pelo Node.js.
 - Análise Ruff sem ocorrências e formatação Python conferida.
@@ -34,3 +34,13 @@ Os testes simulam falta de internet, CNPJ não encontrado, resposta inválida e 
 A atualização foi aplicada à instalação da área de trabalho com backup prévio de código e banco. O conteúdo de pedidos e empresa permaneceu idêntico ao backup após o reinício. Durante a atualização foram encontradas duas instâncias do servidor na mesma porta; o servidor agora usa porta exclusiva no Windows, com teste de regressão para impedir a repetição.
 
 Uma execução intermediária apresentou um erro e o resumo não permitiu recuperar o diagnóstico. A execução completa seguinte, com log integral, aprovou os 70 testes. Não foi atribuída uma causa à falha intermediária; acompanhar caso volte a ocorrer.
+
+## Consulta no cadastro de clientes
+
+Na base de demonstração, foi consultado o CNPJ público da documentação, preservado um responsável digitado manualmente, salvo o cliente e reaberto o cadastro para edição. Nome, nome fantasia, documento, telefone, endereço, responsável e observações permaneceram gravados. A consulta não preenche WhatsApp a partir do telefone.
+
+Os testes verificam acesso de funcionários à consulta de clientes, manutenção da restrição de administrador na empresa, sessão, CSRF e troca de senha pendente. O componente compartilhado também invalida respostas ao substituir o formulário de operações.
+
+Uma rodada apresentou WinError 10053 ao testar uma origem recusada. O servidor foi ajustado para consumir corpos pequenos antes de encerrar essa resposta no Windows. As recusas de origem passaram a ser repetidas nos testes. A rodada final aprovou os 72 testes Python, as cinco suítes JavaScript e as verificações estáticas.
+
+A instalação real recebeu a atualização com backup de código e snapshot do banco. Cadastros, pedidos e dados da empresa permaneceram idênticos ao snapshot após o reinício.

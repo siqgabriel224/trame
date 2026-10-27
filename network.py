@@ -237,14 +237,16 @@ class AuthenticatedHandler:
             + secure
         )
 
-    def company_lookup(self, data):
+    def company_lookup(self, data, *, client=False):
         with closing(self.runtime.connect()) as con:
             user = access.session(con, self.headers.get("Cookie"))
             if not user:
                 return self.reply(401, {"error": "Entre com seu login para continuar."})
             if not hmac.compare_digest(self.headers.get("X-CSRF-Token", ""), user["csrf"]):
                 return self.reply(403, {"error": "Atualize a sessão antes de continuar."})
-            if user["must_change"] or user["role"] != "admin":
+            if user["must_change"]:
+                return self.reply(403, {"error": "Troque sua senha temporária antes de continuar."})
+            if not client and user["role"] != "admin":
                 return self.reply(
                     403,
                     {
@@ -261,11 +263,25 @@ class AuthenticatedHandler:
     def do_POST(self):
         origin = self.authority()
         if not origin or self.headers.get("Origin") != origin:
+            # No Windows, fechar com um corpo pendente pode descartar a resposta 403.
+            # Drene apenas corpos pequenos; requisições grandes continuam recusadas.
+            self.close_connection = True
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            if 0 < length <= 16384:
+                try:
+                    self.rfile.read(length)
+                except (OSError, TimeoutError):
+                    pass
             return self.reply(403, {"error": "Origem recusada."})
         try:
             data = self.read_json()
             if self.path == "/api/company/cnpj":
                 return self.company_lookup(data)
+            if self.path == "/api/clients/cnpj":
+                return self.company_lookup(data, client=True)
             with self.runtime.LOCK, closing(self.runtime.connect()) as con:
                 con.execute("BEGIN IMMEDIATE")
                 if self.path == "/api/setup":

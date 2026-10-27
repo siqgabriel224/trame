@@ -13,12 +13,19 @@ const result = {
   source: 'BrasilAPI',
   status: 'ATIVA',
 };
-function setup(request) {
+function setup(request, client = false) {
   const elements = Object.fromEntries(
-    ['name', 'tradeName', 'document', 'phone', 'email', 'address', 'website'].map((key) => [
-      key,
-      { value: '' },
-    ])
+    [
+      'name',
+      'tradeName',
+      'document',
+      'phone',
+      'email',
+      'address',
+      'website',
+      'whatsapp',
+      'responsible',
+    ].map((key) => [key, { value: '' }])
   );
   elements.document.value = '19131243000197';
   const form = { elements };
@@ -27,6 +34,9 @@ function setup(request) {
   const dialog = {
     addEventListener(event, callback) {
       this[event] = callback;
+    },
+    removeEventListener(event, callback) {
+      if (this[event] === callback) delete this[event];
     },
   };
   const context = vm.createContext({
@@ -40,9 +50,21 @@ function setup(request) {
         })[id],
     },
     TrameAccess: { request },
+    clientBindings: {
+      form,
+      button,
+      message,
+      dialog,
+      endpoint: '/api/clients/cnpj',
+      saveLabel: 'Salvar',
+    },
   });
   vm.runInContext(fs.readFileSync('web/company.js', 'utf8'), context);
-  return { elements, button, message, dialog };
+  const binding = vm.runInContext(
+    client ? 'TrameCnpj.bind(clientBindings)' : 'TrameCompany',
+    context
+  );
+  return { elements, button, message, dialog, binding };
 }
 async function main() {
   let calls = 0;
@@ -110,6 +132,33 @@ async function main() {
   await closing;
   assert.equal(closed.elements.name.value, '');
   assert.equal(closed.message.textContent, '');
+
+  const client = setup(async (path) => {
+    assert.equal(path, '/api/clients/cnpj');
+    return result;
+  }, true);
+  client.elements.whatsapp.value = 'WhatsApp informado manualmente';
+  client.elements.responsible.value = 'Contato do cliente';
+  await client.button.onclick();
+  assert.equal(client.elements.name.value, result.company.name);
+  assert.equal(client.elements.tradeName.value, result.company.tradeName);
+  assert.equal(client.elements.whatsapp.value, 'WhatsApp informado manualmente');
+  assert.equal(client.elements.responsible.value, 'Contato do cliente');
+  assert.match(client.message.textContent, /clique em Salvar\./);
+
+  const replaced = setup(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+    true
+  );
+  const replacing = replaced.button.onclick();
+  replaced.binding.dispose();
+  resolve(result);
+  await replacing;
+  assert.equal(replaced.elements.name.value, '');
+  assert.equal(replaced.message.textContent, '');
   console.log(
     'PASS: consulta sem salvamento automático, falhas preservam dados e respostas antigas não sobrescrevem edições.'
   );

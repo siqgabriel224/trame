@@ -54,3 +54,5 @@ O botão em Dados da empresa envia apenas o CNPJ para a rota autenticada `POST /
 São aceitos CNPJs numéricos e alfanuméricos no formato documentado pela fonte. A validação cadastral é feita pelo provedor. O retorno é reduzido a razão social, nome fantasia, CNPJ, endereço, telefone, e-mail e situação cadastral; quadro societário e outros dados não são repassados para o navegador.
 
 Consultar não grava empresa nem revisão. Campos não informados pela fonte e edições feitas enquanto a resposta chega são preservados. Trocar o CNPJ ou fechar o formulário invalida uma resposta pendente. O usuário revisa o resultado e escolhe Salvar empresa.
+
+O cadastro e a edição de clientes usam o mesmo componente de preenchimento pela rota `POST /api/clients/cnpj`. Essa rota permite administradores e funcionários autenticados com senha atualizada, acompanhando as permissões de cadastro de clientes. A consulta da própria empresa permanece exclusiva de administradores. O resultado preenche nome, nome fantasia, documento, telefone, e-mail e endereço; não presume WhatsApp nem responsável pelo cliente. Trocar o formulário compartilhado de operações também invalida consultas pendentes.

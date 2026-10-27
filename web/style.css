@@ -1427,7 +1427,8 @@ dialog::backdrop {
   min-height: 40px;
   white-space: nowrap;
 }
-#companyLookupMessage:not(:empty) {
+#companyLookupMessage:not(:empty),
+#clientLookupMessage:not(:empty) {
   padding: 12px;
   background: #f1f5ed;
   border-radius: 8px;

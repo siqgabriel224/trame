@@ -115,12 +115,13 @@ class CompanyEndpoint(unittest.TestCase):
             self.assertEqual(
                 self.client.request("/api/company/cnpj", {"cnpj": DOCUMENT}, csrf=False)[0], 403
             )
-            self.assertEqual(
-                self.client.request(
-                    "/api/company/cnpj", {"cnpj": DOCUMENT}, origin="https://example.com"
-                )[0],
-                403,
-            )
+            for _ in range(8):
+                self.assertEqual(
+                    self.client.request(
+                        "/api/company/cnpj", {"cnpj": DOCUMENT}, origin="https://example.com"
+                    )[0],
+                    403,
+                )
             employee = self.flow.employee()
             self.assertEqual(
                 employee.request(
@@ -142,6 +143,43 @@ class CompanyEndpoint(unittest.TestCase):
             status, body, _ = self.client.request("/api/company/cnpj", {"cnpj": DOCUMENT})
         self.assertEqual(status, 503)
         self.assertEqual(body["error"], "Serviço indisponível")
+
+    def test_employee_can_consult_clients_without_saving_or_editing_company(self):
+        employee = self.flow.employee()
+        employee.request(
+            "/api/password",
+            {"currentPassword": "temporaria-funcionario", "newPassword": "nova-senha-funcionario"},
+        )
+        self.assertEqual(employee.login("funcionario", "nova-senha-funcionario")[0], 200)
+        before = employee.request("/api/state")[1]
+        with patch.object(
+            cnpj, "lookup", return_value=cnpj.company_fields(PUBLIC, DOCUMENT)
+        ) as lookup:
+            status, body, _ = employee.request("/api/clients/cnpj", {"cnpj": DOCUMENT})
+            self.assertEqual(status, 200)
+            self.assertEqual(body["company"]["tradeName"], PUBLIC["nome_fantasia"])
+            self.assertEqual(employee.request("/api/company/cnpj", {"cnpj": DOCUMENT})[0], 403)
+            self.assertEqual(lookup.call_count, 1)
+        self.assertEqual(employee.request("/api/state")[1], before)
+
+    def test_client_lookup_requires_session_csrf_origin_and_current_password(self):
+        with patch.object(cnpj, "lookup") as lookup:
+            self.assertEqual(
+                Client(self.flow.url).request("/api/clients/cnpj", {"cnpj": DOCUMENT})[0], 401
+            )
+            self.assertEqual(
+                self.client.request("/api/clients/cnpj", {"cnpj": DOCUMENT}, csrf=False)[0], 403
+            )
+            for _ in range(8):
+                self.assertEqual(
+                    self.client.request(
+                        "/api/clients/cnpj", {"cnpj": DOCUMENT}, origin="https://example.com"
+                    )[0],
+                    403,
+                )
+            employee = self.flow.employee()
+            self.assertEqual(employee.request("/api/clients/cnpj", {"cnpj": DOCUMENT})[0], 403)
+            lookup.assert_not_called()
 
 
 if __name__ == "__main__":

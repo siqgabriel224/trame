@@ -41,6 +41,7 @@ const specFields = {
   ],
 };
 let opsSubmit = null,
+  opsLookup = null,
   queueSector = '',
   queueEmployee = '',
   queueStage = '',
@@ -80,6 +81,8 @@ function installmentStatus(o, p) {
         : 'A vencer';
 }
 function opsForm(title, html, handler) {
+  opsLookup?.dispose();
+  opsLookup = null;
   $('#opsTitle').textContent = title;
   $('#opsFields').innerHTML = html;
   opsSubmit = handler;
@@ -183,7 +186,15 @@ function openClient(id = null) {
     };
   opsForm(
     id ? 'Editar cliente' : 'Cadastrar cliente',
-    `<div class="form-grid">${inputField('Cliente / empresa', 'name', c.name || '', 'text', 'required maxlength="150"')}${selectField('Situação', 'active', option('true', 'Ativo', c.active !== false) + option('false', 'Inativo', c.active === false ? 'false' : ''))}${contactFields.map((k) => inputField(labels[k], k, c[k] || '', k === 'email' ? 'email' : 'text', 'maxlength="1000"')).join('')}${textField('Observações', 'notes', c.notes || '')}</div>`,
+    `<div class="company-lookup">${inputField('CPF / CNPJ', 'document', c.document || '', 'text', 'maxlength="30" placeholder="00.000.000/0000-00"')}<button type="button" class="secondary" id="lookupClient">Consultar CNPJ</button></div>
+    <p class="form-note">Consulta online de dados públicos. Revise antes de salvar o cliente. CPF é preenchido manualmente.</p>
+    <p id="clientLookupMessage" class="form-note" role="status" aria-live="polite"></p>
+    <div class="form-grid">${inputField('Cliente / empresa', 'name', c.name || '', 'text', 'required maxlength="200"')}${inputField('Nome fantasia', 'tradeName', c.tradeName || '', 'text', 'maxlength="200"')}${selectField('Situação', 'active', option('true', 'Ativo', c.active !== false) + option('false', 'Inativo', c.active === false ? 'false' : ''))}${contactFields
+      .filter((k) => k !== 'document')
+      .map((k) =>
+        inputField(labels[k], k, c[k] || '', k === 'email' ? 'email' : 'text', 'maxlength="1000"')
+      )
+      .join('')}${textField('Observações', 'notes', c.notes || '')}</div>`,
     async (f) => {
       const n = clone();
       let row = n.clients.find((c) => c.id === id);
@@ -191,11 +202,21 @@ function openClient(id = null) {
         row = { id: uid() };
         n.clients.push(row);
       }
-      ['name', ...contactFields, 'notes'].forEach((k) => (row[k] = f.elements[k].value.trim()));
+      ['name', 'tradeName', ...contactFields, 'notes'].forEach(
+        (k) => (row[k] = f.elements[k].value.trim())
+      );
       row.active = f.elements.active.value === 'true';
       return save(n);
     }
   );
+  opsLookup = TrameCnpj.bind({
+    form: $('#opsForm'),
+    button: $('#lookupClient'),
+    message: $('#clientLookupMessage'),
+    dialog: $('#opsDialog'),
+    endpoint: '/api/clients/cnpj',
+    saveLabel: 'Salvar',
+  });
 }
 function clientHistory(id) {
   const c = state.clients.find((c) => c.id === id),

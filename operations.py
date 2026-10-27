@@ -133,6 +133,7 @@ def validate(data, old, cents, money):
             client,
             [
                 "name",
+                "tradeName",
                 "responsible",
                 "document",
                 "phone",
