@@ -1,11 +1,11 @@
-# Validação local — 26/10/2026
+# Validação local — 26 e 27/10/2026
 
 Ambiente desta conferência: Windows, Python 3.12.14, SQLite 3.53.1 e cryptography 50.0.2. As bases dos testes foram isoladas da instalação em uso.
 
 ## Resultado
 
-- 72 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência, inicialização e consulta CNPJ na empresa e nos clientes.
-- Cinco suítes JavaScript aprovadas: cálculos comerciais, operação, alterações por entidade, retorno do login e preenchimento da empresa.
+- 74 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência, inicialização, consulta CNPJ e isolamento da demonstração.
+- Cinco suítes JavaScript aprovadas: cálculos comerciais, operação, alterações por entidade, retorno do login, preenchimento CNPJ e confirmação da edição da empresa.
 - Sintaxe dos arquivos JavaScript verificada pelo Node.js.
 - Análise Ruff sem ocorrências e formatação Python conferida.
 - Formatação Prettier conferida em HTML, CSS e JavaScript.
@@ -23,7 +23,7 @@ As [capturas](imagens/pedido.png) mostram somente dados fictícios.
 
 O workflow remoto do GitHub, outras versões de Python, Linux, versões antigas do Windows, impressora física e uso diário na empresa não foram verificados nesta preparação. A edição limpa não inclui os executáveis históricos nem promete compatibilidade física com Windows 7.
 
-O banco original e os atalhos da instalação anterior não foram alterados.
+As verificações no navegador usam bases separadas. O conteúdo do banco original foi preservado nas atualizações descritas abaixo.
 
 ## Consulta de CNPJ
 
@@ -44,3 +44,17 @@ Os testes verificam acesso de funcionários à consulta de clientes, manutençã
 Uma rodada apresentou WinError 10053 ao testar uma origem recusada. O servidor foi ajustado para consumir corpos pequenos antes de encerrar essa resposta no Windows. As recusas de origem passaram a ser repetidas nos testes. A rodada final aprovou os 72 testes Python, as cinco suítes JavaScript e as verificações estáticas.
 
 A instalação real recebeu a atualização com backup de código e snapshot do banco. Cadastros, pedidos e dados da empresa permaneceram idênticos ao snapshot após o reinício.
+
+## Interface e demonstração com histórico
+
+Foram revisados o tema compartilhado, a aplicação, o acesso e a impressão. A conferência visual cobriu pedidos, orçamentos, clientes, produção, estoque, cobranças, funcionários, detalhes da OS, formulário de pedido e dados da empresa. As larguras de 390, 900 e 1440 pixels foram exercitadas. No celular, a página permaneceu sem transbordamento horizontal; a tabela tem sua própria rolagem. O formulário longo manteve os botões do rodapé acessíveis. A prévia da OS foi conferida no computador e no celular; a impressão física continua pendente.
+
+Os dados da empresa abriram com campos desabilitados e sem o botão Salvar. O lápis abriu a confirmação. Cancelar manteve os campos bloqueados; confirmar liberou a edição; fechar e reabrir bloqueou novamente. Os testes JavaScript também verificam essa sequência.
+
+A nova demonstração contém 32 documentos com conversões de orçamento, 12 clientes, oito funcionários e dez materiais. A construção usa as mesmas validações comerciais do servidor, incluindo aprovações, consumo de estoque, parcelas, anulação e entrega parcial. Os testes conferem a consistência do estado e recusam iniciar a demonstração em um processo já configurado para outra instalação.
+
+O servidor da demonstração foi encerrado e o novo atalho **Tramê — Demonstração** foi acionado. Depois da reabertura, o navegador exibiu novamente os 12 pedidos em aberto, cinco orçamentos em negociação e os mesmos totais. A conferência visual ocorreu no navegador integrado; o duplo clique manual no Explorer não foi testado.
+
+A instalação principal recebeu os arquivos revisados depois de backup do código e do SQLite. Após reiniciar, o estado operacional, a revisão e todos os registros de usuários permaneceram iguais ao snapshot. A nova folha de tema respondeu e a tela de login da instalação principal foi aberta. A demonstração continua com outro banco e outra porta.
+
+As [capturas atuais](imagens/demo-painel.png), a [produção](imagens/demo-producao.png), a [confirmação da empresa](imagens/demo-empresa-confirmacao.png) e a [prévia da OS](imagens/demo-os.png) contêm somente dados fictícios.

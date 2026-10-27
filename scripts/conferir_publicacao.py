@@ -5,7 +5,15 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-PRIVATE_FOLDERS = {"dados", "certificados", "node_modules", ".venv", "entrega", "__pycache__"}
+PRIVATE_FOLDERS = {
+    "dados",
+    ".demo",
+    "certificados",
+    "node_modules",
+    ".venv",
+    "entrega",
+    "__pycache__",
+}
 PRIVATE_SUFFIXES = {
     ".sqlite",
     ".sqlite3",

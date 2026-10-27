@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
+    <link rel="stylesheet" href="/theme.css" />
     <script defer src="/compat.js"></script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -314,40 +315,68 @@
       <form id="companyForm">
         <div class="modal-top">
           <h2>Dados da sua empresa</h2>
+          <button
+            type="button"
+            class="icon"
+            id="editCompany"
+            aria-label="Editar dados da empresa"
+            title="Editar dados da empresa"
+          >
+            ✎
+          </button>
           <button type="button" class="icon close" aria-label="Fechar dados da empresa">×</button>
         </div>
         <p class="form-note">Aparecem no cabeçalho dos orçamentos e ordens de serviço.</p>
-        <div class="company-lookup">
-          <label
-            >CPF / CNPJ<input
-              name="document"
-              form="companyForm"
-              maxlength="30"
-              placeholder="00.000.000/0000-00"
-              autocomplete="off"
-          /></label>
-          <button type="button" class="secondary" id="lookupCompany">Consultar CNPJ</button>
-        </div>
-        <p class="form-note">
-          Consulta online de dados públicos pela BrasilAPI. Revise os dados antes de salvar. CPF é
-          preenchido manualmente.
+        <p id="companyEditState" class="form-note">
+          Somente leitura. Use o lápis para solicitar a edição.
         </p>
-        <p id="companyLookupMessage" class="form-note" role="status" aria-live="polite"></p>
-        <div class="form-grid">
-          <label class="full">Nome / razão social<input name="name" maxlength="200" /></label
-          ><label class="full">Nome fantasia<input name="tradeName" maxlength="200" /></label
-          ><label>Telefone / WhatsApp<input name="phone" maxlength="60" /></label
-          ><label>E-mail<input name="email" type="email" maxlength="200" /></label
-          ><label>Site / rede social<input name="website" maxlength="300" /></label
-          ><label class="full"
-            >Endereço<textarea name="address" rows="2" maxlength="1000"></textarea>
-          </label>
-        </div>
+        <fieldset id="companyFields" disabled>
+          <div class="company-lookup">
+            <label
+              >CPF / CNPJ<input
+                name="document"
+                form="companyForm"
+                maxlength="30"
+                placeholder="00.000.000/0000-00"
+                autocomplete="off"
+            /></label>
+            <button type="button" class="secondary" id="lookupCompany">Consultar CNPJ</button>
+          </div>
+          <p class="form-note">
+            Consulta online de dados públicos pela BrasilAPI. Revise os dados antes de salvar. CPF é
+            preenchido manualmente.
+          </p>
+          <p id="companyLookupMessage" class="form-note" role="status" aria-live="polite"></p>
+          <div class="form-grid">
+            <label class="full">Nome / razão social<input name="name" maxlength="200" /></label
+            ><label class="full">Nome fantasia<input name="tradeName" maxlength="200" /></label
+            ><label>Telefone / WhatsApp<input name="phone" maxlength="60" /></label
+            ><label>E-mail<input name="email" type="email" maxlength="200" /></label
+            ><label>Site / rede social<input name="website" maxlength="300" /></label
+            ><label class="full"
+              >Endereço<textarea name="address" rows="2" maxlength="1000"></textarea>
+            </label>
+          </div>
+        </fieldset>
         <div class="modal-actions">
-          <button type="button" class="secondary close">Cancelar</button
-          ><button class="primary">Salvar empresa</button>
+          <button type="button" class="secondary close" id="companyCancel">Fechar</button
+          ><button class="primary" id="saveCompany" hidden>Salvar empresa</button>
         </div>
       </form>
+    </dialog>
+    <dialog id="companyEditDialog">
+      <div class="modal-top">
+        <h2>Editar os dados da empresa?</h2>
+        <button type="button" class="icon close" aria-label="Fechar confirmação">×</button>
+      </div>
+      <p>
+        As alterações serão usadas nos próximos orçamentos e ordens de serviço. Deseja liberar a
+        edição?
+      </p>
+      <div class="modal-actions">
+        <button type="button" class="secondary close">Manter somente leitura</button
+        ><button type="button" class="primary" id="confirmCompanyEdit">Sim, liberar edição</button>
+      </div>
     </dialog>
     <div id="toast" role="status"></div>
   </body>

@@ -79,6 +79,13 @@ fetch('/api/session')
   .then((r) => r.json())
   .then((s) => {
     loginSession = s;
+    if (s.demonstration) {
+      const notice = document.createElement('p');
+      notice.className = 'login-demo';
+      notice.textContent =
+        'Demonstração com dados fictícios. Login: demo · Senha: Trame-Demo-2026!';
+      field('loginIntro').after(notice);
+    }
     if (s.setupNeeded) {
       field('loginForm').hidden = true;
       field('setupForm').hidden = false;

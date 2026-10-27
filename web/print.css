@@ -1,99 +1,123 @@
-* {
-  box-sizing: border-box;
-}
 body {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  color: #223b30;
-  background: #e9eee7;
-  margin: 0;
+  background: #eaf0e6;
+  color: #203b2d;
   font-size: 12px;
   line-height: 1.5;
 }
 .print-toolbar {
   position: sticky;
   top: 0;
-  background: #164b3a;
-  color: white;
-  padding: 16px 30px;
+  z-index: 3;
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
-  z-index: 1;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 16px 28px;
+  background: var(--green-dark);
+  color: #f2f5ea;
 }
 .print-toolbar button {
-  background: #e1edc4;
+  min-height: 40px;
+  padding: 10px 18px;
   border: 0;
-  border-radius: 6px;
-  padding: 10px 20px;
-  color: #21482e;
-  font-weight: 600;
-  cursor: pointer;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #22462e;
+  font-weight: 650;
 }
-.print-toolbar button:disabled {
-  opacity: 0.5;
+.print-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.print-toolbar input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.print-toolbar input[type='number'] {
+  width: 60px;
+  min-height: 34px;
+  padding: 6px;
+  border: 0;
+  border-radius: 5px;
 }
 #document {
-  background: white;
   width: 210mm;
-  max-width: 100%;
+  max-width: calc(100% - 32px);
   margin: 24px auto;
   padding: 16mm;
-  box-shadow: 0 4px 24px #0001;
+  background: white;
+  box-shadow: 0 8px 32px #1b39251a;
 }
 .document-header {
   display: flex;
   justify-content: space-between;
-  gap: 30px;
-  border-bottom: 3px solid #204a34;
-  padding-bottom: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-bottom: 18px;
   margin-bottom: 20px;
+  border-bottom: 3px solid #24543a;
+}
+.document-header > div:first-child {
+  flex: 1;
+  min-width: 170px;
 }
 .brand {
+  max-width: 75mm;
   font-size: 20px;
   font-weight: 700;
-  max-width: 100mm;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
 .document-header p {
-  font-size: 10px;
   margin: 7px 0;
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 .document-code {
+  flex-shrink: 1;
   text-align: right;
-  flex-shrink: 0;
 }
-h1 {
-  font-size: 15px;
-  letter-spacing: 1px;
+.document-code h1 {
   margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.5px;
 }
 .document-code strong {
   font-size: 23px;
 }
 h2 {
+  margin: 20px 0 12px;
+  padding: 8px 10px;
+  background: #eef4e7;
+  color: #2a4c32;
   font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.3px;
   text-transform: uppercase;
-  background: #edf2e9;
-  padding: 8px 10px;
-  margin: 20px 0 12px;
 }
 h3 {
   font-size: 12px;
 }
 .info-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 20px;
 }
 .info-grid div {
-  break-inside: avoid;
   min-width: 0;
+  break-inside: avoid;
 }
 .info-grid b {
   display: block;
+  margin-bottom: 3px;
+  color: #576d56;
   font-size: 9px;
-  color: #687968;
 }
 .info-grid span {
   display: block;
@@ -101,17 +125,18 @@ h3 {
   overflow-wrap: anywhere;
 }
 .description {
-  font-weight: 600;
-  border-top: 1px solid #dbe4d5;
   padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .piece {
   margin-top: 20px;
 }
 .piece-content {
   display: flex;
-  gap: 20px;
   align-items: flex-start;
+  gap: 20px;
 }
 .specs {
   flex: 1;
@@ -122,9 +147,9 @@ h3 {
   overflow-wrap: anywhere;
 }
 figure {
-  margin: 0;
-  width: 46mm;
   flex-shrink: 0;
+  width: 46mm;
+  margin: 0;
 }
 figure img {
   width: 100%;
@@ -134,7 +159,7 @@ figure img {
 figcaption {
   font-size: 8px;
   text-align: center;
-  color: #819079;
+  color: #5e7357;
 }
 .preserve {
   white-space: pre-wrap;
@@ -142,18 +167,19 @@ figcaption {
 }
 table {
   width: 100%;
-  border-collapse: collapse;
   margin: 10px 0;
+  border-collapse: collapse;
   font-size: 10px;
 }
 th,
 td {
-  border: 1px solid #d4ddcc;
-  text-align: left;
   padding: 8px;
+  border: 1px solid #d1deca;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 th {
-  background: #f0f4ec;
+  background: #f0f4ea;
   font-size: 9px;
 }
 tr {
@@ -165,25 +191,27 @@ tr {
   text-align: right;
 }
 .line-total td {
-  font-weight: 600;
-  background: #f5f7f0;
+  background: #f4f7ee;
+  font-weight: 650;
 }
 .totals {
   width: 85mm;
+  max-width: 100%;
   margin: 22px 0 20px auto;
   break-inside: avoid;
 }
 .totals div {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   padding: 5px 0;
 }
 .totals .total {
-  border-top: 2px solid #385735;
-  font-size: 16px;
   margin-top: 6px;
   padding-top: 10px;
+  border-top: 2px solid #385735;
+  font-size: 16px;
+  font-weight: 650;
 }
 .signatures {
   break-before: page;
@@ -215,36 +243,97 @@ tr {
 }
 .delivery-sign {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 20px;
-  line-height: 2.6;
-  font-size: 10px;
   margin-top: 25px;
+  font-size: 10px;
+  line-height: 2.6;
 }
 .quote-approval {
   margin-top: 35px;
-  break-inside: avoid;
   font-size: 11px;
   line-height: 2;
+  break-inside: avoid;
 }
 .quote-approval small {
   font-size: 9px;
 }
 footer {
   margin-top: 25px;
-  border-top: 1px solid #d4ddcc;
   padding-top: 10px;
-  color: #7a8970;
+  border-top: 1px solid #d1deca;
+  color: #5a7052;
   font-size: 9px;
+}
+.hide-values .commercial-values {
+  display: none;
+}
+.commercial-values {
+  break-inside: avoid;
+}
+.order-qr {
+  flex-shrink: 0;
+  width: 25mm;
+  margin: 0;
+  text-align: center;
+}
+.order-qr img {
+  width: 25mm;
+  height: 25mm;
+}
+.order-qr figcaption {
+  font-size: 7px;
+  line-height: 1.4;
 }
 @page {
   size: A4;
   margin: 12mm;
 }
+@media (max-width: 700px) {
+  .print-toolbar {
+    padding: 12px 16px;
+  }
+  .print-toolbar > span {
+    width: 100%;
+  }
+  #document {
+    max-width: calc(100% - 20px);
+    padding: 22px;
+    margin: 14px auto;
+  }
+  .document-header {
+    gap: 12px;
+  }
+  .brand {
+    font-size: 17px;
+  }
+  .piece-content {
+    flex-wrap: wrap;
+  }
+  .prices th,
+  .prices td {
+    padding: 6px;
+  }
+}
+@media (max-width: 440px) {
+  .info-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .document-code {
+    text-align: left;
+  }
+  .order-qr {
+    margin-left: auto;
+  }
+  .prices {
+    font-size: 9px;
+  }
+}
 @media print {
   body {
     background: white;
-    color: #182b20;
+    color: #172d20;
     font-size: 10pt;
   }
   .print-toolbar {
@@ -260,7 +349,8 @@ footer {
   .document-header {
     margin-bottom: 12px;
   }
-  h2 {
+  h2,
+  h3 {
     break-after: avoid;
   }
   thead {
@@ -278,6 +368,7 @@ footer {
     margin-top: 14px;
   }
   .info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     font-size: 10px;
   }
   .signatures h2 {
@@ -289,84 +380,7 @@ footer {
   .signatures th {
     font-size: 8px;
   }
-  .print-toolbar + main {
-    padding: 0;
-  }
   footer {
     font-size: 8px;
-  }
-}
-[hidden] {
-  display: none !important;
-}
-.print-toolbar {
-  gap: 15px;
-  flex-wrap: wrap;
-}
-.print-toolbar label {
-  font-size: 11px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.print-toolbar input[type='number'] {
-  width: 50px;
-  padding: 5px;
-}
-.hide-values .commercial-values {
-  display: none;
-}
-.commercial-values {
-  break-inside: avoid;
-}
-@media (max-width: 700px) {
-  .print-toolbar {
-    padding: 12px;
-  }
-  .print-toolbar > span {
-    width: 100%;
-  }
-  #document {
-    padding: 20px;
-  }
-  .document-header {
-    gap: 10px;
-  }
-  .document-code {
-    flex-shrink: 1;
-  }
-  .brand {
-    font-size: 16px;
-  }
-}
-.order-qr {
-  width: 25mm;
-  flex-shrink: 0;
-  margin: 0;
-  text-align: center;
-}
-.order-qr img {
-  width: 25mm;
-  height: 25mm;
-}
-.order-qr figcaption {
-  font-size: 7px;
-  line-height: 1.4;
-}
-.document-header .brand {
-  max-width: 75mm;
-}
-.document-header {
-  gap: 16px;
-}
-.document-code {
-  flex-shrink: 1;
-}
-@media (max-width: 600px) {
-  .document-header {
-    flex-wrap: wrap;
-  }
-  .order-qr {
-    margin-left: auto;
   }
 }

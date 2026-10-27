@@ -84,3 +84,30 @@ const TrameCompany = TrameCnpj.bind({
   endpoint: '/api/company/cnpj',
   saveLabel: 'Salvar empresa',
 });
+
+TrameCompany.editing = false;
+TrameCompany.lock = () => {
+  TrameCompany.reset();
+  TrameCompany.editing = false;
+  document.getElementById('companyFields').disabled = true;
+  document.getElementById('saveCompany').hidden = true;
+  document.getElementById('editCompany').hidden = false;
+  document.getElementById('companyCancel').textContent = 'Fechar';
+  document.getElementById('companyEditState').textContent =
+    'Somente leitura. Use o lápis para solicitar a edição.';
+};
+if (document.getElementById('editCompany')) {
+  document.getElementById('editCompany').onclick = () =>
+    document.getElementById('companyEditDialog').showModal();
+  document.getElementById('confirmCompanyEdit').onclick = () => {
+    document.getElementById('companyEditDialog').close();
+    TrameCompany.editing = true;
+    document.getElementById('companyFields').disabled = false;
+    document.getElementById('saveCompany').hidden = false;
+    document.getElementById('editCompany').hidden = true;
+    document.getElementById('companyCancel').textContent = 'Cancelar';
+    document.getElementById('companyEditState').textContent =
+      'Edição liberada. Revise os dados e salve para aplicar.';
+  };
+  document.getElementById('companyDialog').addEventListener('close', TrameCompany.lock);
+}

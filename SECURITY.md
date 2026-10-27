@@ -7,3 +7,5 @@ As contas são armazenadas no banco local, com hash de senha e sessões controla
 Senhas, chaves de primeiro acesso, certificados e banco de dados não devem aparecer em issues, capturas ou commits. Para relatar um problema, descreva o comportamento sem incluir dados de clientes. Se houver uma credencial exposta, revogue-a antes de compartilhar qualquer reprodução.
 
 O projeto está em desenvolvimento e não passou por auditoria independente. Backups precisam da mesma proteção do banco principal.
+
+O iniciador `demonstracao.py` cria um acesso conhecido somente para a base fictícia em `.demo/`, restrita ao próprio computador. Esse acesso é publicado para avaliação e não deve ser usado em uma instalação com dados reais. A pasta `.demo/` fica fora do Git e do pacote de código.

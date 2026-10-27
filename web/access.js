@@ -70,6 +70,12 @@ TrameAccess.ready = TrameAccess.refreshSession()
   .then((s) => {
     if (!document.querySelector('main>header')) return s;
     const header = document.querySelector('main>header');
+    if (s.demonstration) {
+      header.insertAdjacentHTML(
+        'afterend',
+        '<aside class="demo-banner"><strong>DEMONSTRAÇÃO · DADOS FICTÍCIOS</strong><span>Explore os pedidos, a produção, o estoque e os recebimentos. Suas alterações ficam somente nesta demonstração.</span></aside>'
+      );
+    }
     header.insertAdjacentHTML(
       'beforeend',
       '<div class="account-bar"><span id="signedUser" class="account-name"></span><button id="myAccount" class="secondary">Minha conta</button><button id="signOut" class="secondary">Sair</button></div>'

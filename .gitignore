@@ -34,6 +34,7 @@ entrega/
 backup*/
 tmp*/
 .validacao/
+.demo/
 .DS_Store
 Thumbs.db
 desktop.ini

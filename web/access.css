@@ -1,182 +1,227 @@
-[hidden] {
-  display: none !important;
-}
 .login-page {
-  margin: 0;
-  min-height: 100vh;
   display: grid;
   place-items: center;
-  background: #113f33;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  color: #253e36;
-  padding: 28px;
-  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 28px 18px;
+  background: var(--green-dark);
 }
 .login-card {
-  background: #f7f8f3;
-  width: min(100%, 430px);
-  padding: 40px;
+  width: min(100%, 440px);
+  padding: 36px;
+  background: #fbfcf7;
+  border: 1px solid #ffffff40;
   border-radius: 20px;
-  box-sizing: border-box;
-  box-shadow: 0 24px 80px #001c2060;
+  box-shadow: 0 24px 80px #001d2450;
 }
 .login-brand {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #164d3c;
-  font-size: 42px;
+  color: var(--green);
+  font-size: 40px;
   font-weight: 650;
-  letter-spacing: -2px;
+  letter-spacing: -1.8px;
   text-decoration: none;
 }
+.login-brand img {
+  width: 48px;
+  height: 48px;
+}
 .login-kicker {
+  margin: 6px 0 28px;
+  color: #5d7359;
   font-size: 10px;
-  letter-spacing: 2px;
-  color: #6a7b68;
-  margin-bottom: 32px;
+  letter-spacing: 1.8px;
 }
 .login-card h1 {
-  font:
-    normal 29px Georgia,
-    serif;
-  margin-bottom: 12px;
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.6px;
 }
 .login-card p {
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 .login-card label {
   display: block;
-  font-size: 12px;
   margin: 18px 0;
+  color: #38513d;
+  font-size: 13px;
+  font-weight: 600;
 }
 .login-card input {
-  box-sizing: border-box;
+  display: block;
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ccd7c9;
-  border-radius: 7px;
-  font: inherit;
+  min-height: 44px;
+  padding: 11px 12px;
   margin-top: 7px;
+  border: 1px solid #c7d5c2;
+  border-radius: 8px;
   background: white;
+  color: #253e35;
+  font: inherit;
+  font-weight: 400;
 }
 .login-card input:focus {
-  outline: 2px solid #648c69;
+  outline: 2px solid #5f956a66;
+  outline-offset: 1px;
+  border-color: #57855e;
 }
 .login-card button {
   width: 100%;
-  padding: 13px;
-  border: 0;
-  border-radius: 7px;
-  background: #145c48;
+  min-height: 44px;
+  padding: 12px 15px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--green);
   color: white;
-  font:
-    600 13px 'Segoe UI',
-    sans-serif;
-  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
 }
-.login-card button:disabled {
-  opacity: 0.5;
-  cursor: wait;
+.login-card button:hover:not(:disabled) {
+  background: #104a38;
 }
 .login-card .quiet {
-  background: transparent;
-  color: #145c48;
   margin-top: 8px;
+  background: transparent;
+  color: #285c3a;
+}
+#loginIntro,
+.login-help {
+  color: #5b7059;
 }
 #loginMessage {
-  color: #a13c29;
   min-height: 20px;
+  color: #9a3c2a;
   overflow-wrap: anywhere;
 }
 .login-help {
-  border-top: 1px solid #dce2d6;
   padding-top: 16px;
-  color: #6a796b;
+  border-top: 1px solid var(--line);
+}
+.login-demo {
+  padding: 12px;
+  margin: 18px 0;
+  border: 1px solid #e5cf9b;
+  border-radius: 8px;
+  background: #fff3d6;
+  color: #6e521f;
+  font-size: 12px;
+  line-height: 1.7;
 }
 .account-bar {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 .account-bar button {
+  min-height: 35px;
+  padding: 8px 11px;
   white-space: nowrap;
+  font-size: 12px;
 }
 .account-name {
-  font-size: 12px;
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  color: #49624b;
 }
 .account-list {
   display: grid;
-  gap: 10px;
-  margin: 16px 0;
+  gap: 12px;
+  margin: 18px 0;
 }
 .account-person {
-  padding: 15px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.account-person > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .account-person small {
   display: block;
-  color: var(--muted);
   margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
 }
 .account-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .account-error {
-  color: #a13c29;
-  font-size: 13px;
   min-height: 22px;
+  color: #9a3c2a;
+  font-size: 13px;
 }
 .session-banner {
   position: fixed;
-  bottom: 15px;
-  left: 15px;
-  right: 15px;
-  padding: 16px;
-  background: #fff0ce;
-  border: 1px solid #c18a2e;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
   z-index: 10000;
-  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #d3a54c;
+  border-radius: 9px;
+  background: #fff0ce;
+  color: #72501b;
+  box-shadow: 0 8px 25px #0002;
+  font-size: 13px;
+}
+.session-banner a {
+  color: #583f13;
+  font-weight: 650;
 }
 .audit-list {
+  margin: 18px 0;
   padding: 0;
   list-style: none;
-  font-size: 12px;
+  font-size: 13px;
 }
 .audit-list li {
-  padding: 12px 0;
+  padding: 13px 0;
   border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
 }
 .audit-list small {
   display: block;
   color: var(--muted);
+  font-size: 11px;
 }
-@media (max-width: 620px) {
-  .login-card {
-    padding: 28px;
+@media (max-width: 760px) {
+  .account-bar {
+    flex-wrap: wrap;
+    gap: 6px;
   }
   .account-name {
-    max-width: 115px;
+    max-width: 130px;
   }
-  header {
-    flex-wrap: wrap;
-    gap: 8px;
-    height: auto !important;
-    min-height: 70px;
+}
+@media (max-width: 440px) {
+  .login-card {
+    padding: 26px;
+  }
+  .login-card h1 {
+    font-size: 25px;
+  }
+  .account-name {
+    max-width: 110px;
   }
   .account-bar {
-    gap: 6px;
+    margin-left: 0;
+    width: 100%;
   }
 }

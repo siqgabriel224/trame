@@ -253,13 +253,17 @@ function setupCommerce() {
     render();
   };
   $('#companyButton').onclick = () => {
-    TrameCompany.reset();
+    TrameCompany.lock();
     const f = $('#companyForm');
     companyFields.forEach((k) => (f.elements[k].value = state.company?.[k] || ''));
     $('#companyDialog').showModal();
   };
   $('#companyForm').onsubmit = async (e) => {
     e.preventDefault();
+    if (!TrameCompany.editing) {
+      toast('Clique no lápis e confirme a edição antes de alterar os dados da empresa.', true);
+      return;
+    }
     const n = clone();
     n.company = Object.fromEntries(
       companyFields.map((k) => [k, e.target.elements[k].value.trim()])

@@ -150,6 +150,7 @@ class AuthenticatedHandler:
                 },
             )
         assets = {
+            "/theme.css": ("theme.css", "text/css"),
             "/login": ("login.html", "text/html"),
             "/login.js": ("login.js", "text/javascript"),
             "/compat.js": ("compat.js", "text/javascript"),
@@ -174,6 +175,7 @@ class AuthenticatedHandler:
                         "user": access.public(user) if user else None,
                         "csrf": user["csrf"] if user else None,
                         "setupNeeded": setup,
+                        "demonstration": os.environ.get("TRAME_DEMO") == "1",
                         "serverUrl": self.runtime.CONFIG["public_url"] or self.authority(),
                     },
                 )

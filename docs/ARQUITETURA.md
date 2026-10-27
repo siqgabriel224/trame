@@ -27,6 +27,9 @@ server.py ── network.py ── access.py
 | `web/commerce.js` | Formulários e apresentação de valores |
 | `web/operations.js` | Operação de produção, materiais e entregas |
 | `web/access.js` | Sessão e envio de alterações por entidade |
+| `web/theme.css` | Cores, tipografia, foco e fundamentos compartilhados entre aplicação, login e impressão |
+| `demonstracao.py` | Inicialização local com banco e acesso de demonstração separados |
+| `demo_data.py` | Histórico fictício construído pelas validações comerciais da aplicação |
 | `vendor/qrencoder.py` | QR Code, com licença e autoria próprias |
 
 ## Decisões de domínio

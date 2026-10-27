@@ -48,6 +48,10 @@ O iniciador desta edição mantém o acesso restrito ao próprio computador. Ban
 
 ## Um pedido, passo a passo
 
+Para explorar uma operação preenchida, abra **Abrir Demonstracao.cmd**. A demonstração tem três meses de histórico fictício, usa outra base e atende na porta **18750**. Acesse com usuário `demo` e senha `Trame-Demo-2026!`. Veja os [exemplos e instruções para recomeçar](docs/DEMONSTRACAO.md).
+
+Os dados da empresa abrem somente para leitura. O lápis pede confirmação antes de liberar a edição; salvar continua sendo uma ação explícita.
+
 1. Cadastre o cliente e monte um orçamento com um ou mais modelos.
 2. Informe as quantidades por tamanho e os valores de cada técnica.
 3. Converta o orçamento aprovado em uma OS.
@@ -77,6 +81,7 @@ Os testes usam bancos temporários. O verificador confere também a sintaxe Java
 
 - [Arquitetura e regras de negócio](docs/ARQUITETURA.md)
 - [Instalação, atualização e backup](docs/OPERACAO.md)
+- [Demonstração com histórico fictício](docs/DEMONSTRACAO.md)
 - [Como contribuir](CONTRIBUTING.md)
 - [Cuidados com dados e segurança](SECURITY.md)
 - [Notas desta preparação](docs/ENTREGA.md)
@@ -87,8 +92,8 @@ Os testes usam bancos temporários. O verificador confere também a sintaxe Java
 As capturas usam somente clientes e pedidos fictícios, em uma base separada.
 
 <p>
-  <a href="docs/imagens/painel.png"><img src="docs/imagens/painel.png" width="260" alt="Painel de pedidos com prazos e valores fictícios"></a>
-  <a href="docs/imagens/pedido.png"><img src="docs/imagens/pedido.png" width="260" alt="Pedido de demonstração com 20 peças e total de 718 reais"></a>
+  <a href="docs/imagens/demo-painel.png"><img src="docs/imagens/demo-painel.png" width="360" alt="Painel revisado com pedidos e recebimentos fictícios"></a>
+  <a href="docs/imagens/demo-producao.png"><img src="docs/imagens/demo-producao.png" width="360" alt="Etapas de bordado e DTF em andamento"></a>
 </p>
 
 A [captura da consulta CNPJ](docs/imagens/consulta-cnpj.png) usa o CNPJ público de exemplo da documentação da BrasilAPI, sem salvar a empresa na base de demonstração.

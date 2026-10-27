@@ -13,7 +13,7 @@ const result = {
   source: 'BrasilAPI',
   status: 'ATIVA',
 };
-function setup(request, client = false) {
+function setup(request, client = false, protectedCompany = false) {
   const elements = Object.fromEntries(
     [
       'name',
@@ -39,6 +39,23 @@ function setup(request, client = false) {
       if (this[event] === callback) delete this[event];
     },
   };
+  const controls = {
+    companyFields: {},
+    saveCompany: {},
+    editCompany: {},
+    companyCancel: {},
+    companyEditState: {},
+    confirmCompanyEdit: {},
+    companyEditDialog: {
+      open: false,
+      showModal() {
+        this.open = true;
+      },
+      close() {
+        this.open = false;
+      },
+    },
+  };
   const context = vm.createContext({
     document: {
       getElementById: (id) =>
@@ -47,7 +64,7 @@ function setup(request, client = false) {
           lookupCompany: button,
           companyLookupMessage: message,
           companyDialog: dialog,
-        })[id],
+        })[id] || (protectedCompany ? controls[id] : undefined),
     },
     TrameAccess: { request },
     clientBindings: {
@@ -64,7 +81,7 @@ function setup(request, client = false) {
     client ? 'TrameCnpj.bind(clientBindings)' : 'TrameCompany',
     context
   );
-  return { elements, button, message, dialog, binding };
+  return { elements, button, message, dialog, binding, controls };
 }
 async function main() {
   let calls = 0;
@@ -159,6 +176,22 @@ async function main() {
   await replacing;
   assert.equal(replaced.elements.name.value, '');
   assert.equal(replaced.message.textContent, '');
+  const protectedForm = setup(async () => result, false, true);
+  protectedForm.binding.lock();
+  assert.equal(protectedForm.controls.companyFields.disabled, true);
+  assert.equal(protectedForm.controls.saveCompany.hidden, true);
+  protectedForm.controls.editCompany.onclick();
+  assert.equal(protectedForm.controls.companyEditDialog.open, true);
+  assert.equal(protectedForm.binding.editing, false);
+  protectedForm.controls.companyEditDialog.close();
+  assert.equal(protectedForm.controls.companyFields.disabled, true);
+  protectedForm.controls.editCompany.onclick();
+  protectedForm.controls.confirmCompanyEdit.onclick();
+  assert.equal(protectedForm.binding.editing, true);
+  assert.equal(protectedForm.controls.companyFields.disabled, false);
+  protectedForm.dialog.close();
+  assert.equal(protectedForm.binding.editing, false);
+  assert.equal(protectedForm.controls.companyFields.disabled, true);
   console.log(
     'PASS: consulta sem salvamento automático, falhas preservam dados e respostas antigas não sobrescrevem edições.'
   );
