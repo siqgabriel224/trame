@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <script defer src="/compat.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Entrar · Tramê</title>
+    <link rel="icon" href="/trame.ico" />
+    <link rel="stylesheet" href="/access.css" />
+    <script defer src="/login.js"></script>
+  </head>
+  <body class="login-page">
+    <main class="login-card">
+      <a class="login-brand" href="/login"
+        ><img src="/trame.svg" width="52" height="52" alt="" />tramê</a
+      >
+      <p class="login-kicker">PEDIDOS E PRODUÇÃO</p>
+      <h1 id="loginTitle">Entre na sua conta</h1>
+      <p id="loginIntro">Use o acesso fornecido pelo administrador da empresa.</p>
+      <form id="loginForm">
+        <label
+          >Login<input
+            name="username"
+            autocomplete="username"
+            required
+            maxlength="60"
+            autofocus /></label
+        ><label
+          >Senha<input
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            maxlength="128" /></label
+        ><button type="submit">Entrar</button>
+      </form>
+      <form id="setupForm" hidden>
+        <label>Chave de primeiro acesso<input name="token" autocomplete="off" required /></label
+        ><label>Seu nome<input name="name" autocomplete="name" required maxlength="150" /></label
+        ><label
+          >Login do administrador<input
+            name="username"
+            autocomplete="username"
+            required
+            minlength="3"
+            maxlength="60"
+            pattern="[a-zA-Z0-9._-]+" /></label
+        ><label
+          >Senha<input
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="128" /></label
+        ><label
+          >Confirmar senha<input
+            name="confirm"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="128" /></label
+        ><button type="submit">Criar administrador</button>
+      </form>
+      <form id="passwordForm" hidden>
+        <label
+          >Senha atual<input
+            name="currentPassword"
+            type="password"
+            autocomplete="current-password"
+            required
+            maxlength="128" /></label
+        ><label
+          >Nova senha<input
+            name="newPassword"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="128" /></label
+        ><label
+          >Confirmar nova senha<input
+            name="confirm"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="128" /></label
+        ><button type="submit">Trocar senha</button
+        ><button type="button" id="cancelPassword" class="quiet">Sair desta conta</button>
+      </form>
+      <p id="loginMessage" role="status" aria-live="polite"></p>
+      <p class="login-help" id="loginHelp">Esqueceu a senha? Peça uma nova ao administrador.</p>
+    </main>
+  </body>
+</html>

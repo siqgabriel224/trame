@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <script defer src="/compat.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Tramê · Impressão</title>
+    <link rel="stylesheet" href="/print.css" />
+    <script defer src="/domain.js"></script>
+    <script defer src="/print.js"></script>
+    <link rel="icon" href="/trame.ico" sizes="any" />
+  </head>
+  <body>
+    <nav class="print-toolbar">
+      <span id="printTitle">Preparando documento…</span
+      ><label id="valuesControl"
+        ><input type="checkbox" id="showValues" checked /> Incluir valores na OS</label
+      ><label id="rowsControl"
+        >Linhas extras de assinatura
+        <input type="number" id="extraRows" min="0" max="30" value="3" /></label
+      ><button id="printButton" disabled>Imprimir / Salvar PDF</button>
+    </nav>
+    <main id="document"><p>Carregando dados salvos…</p></main>
+  </body>
+</html>

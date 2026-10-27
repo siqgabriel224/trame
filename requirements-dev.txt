@@ -1,0 +1,3 @@
+# Somente para os testes de certificado e o utilitário opcional de rede.
+cryptography==50.0.2
+ruff==0.14.10
