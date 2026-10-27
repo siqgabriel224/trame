@@ -1,6 +1,29 @@
 'use strict';
 // Regras de cálculo compartilhadas pela aplicação e pelos documentos impressos.
 const TrameDomain = (() => {
+  const matchesClient = (client, query) => {
+    const fold = (value) =>
+      String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('pt-BR');
+    const q = fold(query).trim();
+    const document = (value) =>
+      String(value || '')
+        .replace(/[.\s/-]/g, '')
+        .toUpperCase();
+    return (
+      !q ||
+      fold(`${client.name} ${client.tradeName || ''}`).includes(q) ||
+      document(client.document).includes(document(q))
+    );
+  };
+  const serviceTotal = (qtyMilli, unitCents, setupCents = 0) =>
+    Math.floor((qtyMilli * unitCents + 500) / 1000) + setupCents;
+  const quantityInput = (qtyMilli) =>
+    new Intl.NumberFormat('pt-BR', { useGrouping: false, maximumFractionDigits: 3 }).format(
+      qtyMilli / 1000
+    );
   const standardSizes = ['PP', 'P', 'M', 'G', 'GG'];
   const sizeGroups = (sizes = {}) => {
     const groups = ['Feminino', 'Masculino'].map((group) => ({
@@ -116,6 +139,9 @@ const TrameDomain = (() => {
     return { onHand, reserved, available: onHand - reserved };
   }
   return Object.freeze({
+    matchesClient,
+    serviceTotal,
+    quantityInput,
     sizeGroups,
     orderNumberQuery,
     matchesOrder,

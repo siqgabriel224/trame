@@ -231,6 +231,7 @@ def validate(data, old, cents, money):
             [
                 "name",
                 "tradeName",
+                "seller",
                 "responsible",
                 "document",
                 "phone",

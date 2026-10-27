@@ -4,7 +4,7 @@
   "private": true,
   "description": "Pedidos e produção para confecção",
   "scripts": {
-    "test": "node test_commerce.cjs && node test_operations.cjs && node test_network.cjs && node test_login.cjs && node test_company.cjs",
+    "test": "node test_commerce.cjs && node test_operations.cjs && node test_network.cjs && node test_login.cjs && node test_company.cjs && node test_services.cjs",
     "format": "prettier --write web test_*.cjs",
     "format:check": "prettier --check web test_*.cjs"
   },

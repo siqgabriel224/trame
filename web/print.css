@@ -384,3 +384,33 @@ footer {
     font-size: 8px;
   }
 }
+
+.service-statement th,
+.service-statement td {
+  padding: 7px 6px;
+}
+.service-statement th:nth-child(n + 3),
+.service-statement td:nth-child(n + 3) {
+  white-space: nowrap;
+}
+.service-statement th:nth-child(n + 4),
+.service-statement td:nth-child(n + 4) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.service-statement th:nth-child(2) {
+  width: 38%;
+}
+.service-statement small {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+}
+@media screen and (max-width: 760px) {
+  .service-report-table {
+    overflow-x: auto;
+  }
+  .service-statement {
+    min-width: 620px;
+  }
+}

@@ -42,6 +42,7 @@ const specFields = {
 };
 let opsSubmit = null,
   opsLookup = null,
+  clientSearch = '',
   queueSearch = '',
   queueEmployee = '',
   queueStage = 'active',
@@ -106,6 +107,10 @@ function renderOperationsView() {
   $('#opsWorkspace').hidden = !custom;
   $$('.sidebar .nav').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
   if (!custom) return false;
+  if (['embroidery', 'dtf'].includes(view)) {
+    TrameServices.render(view);
+    return true;
+  }
   const titles = {
     clients: ['Clientes', 'Contatos reutilizáveis, com histórico de pedidos.'],
     queue: ['Produção', 'Etapas, funcionários, quantidades e prazos por setor.'],
@@ -116,7 +121,7 @@ function renderOperationsView() {
   const [title, subtitle] = titles[view];
   let content = '';
   if (view === 'clients')
-    content = `<button class="primary" data-action="new-client">＋ Cadastrar cliente</button><div class="ops-cards">${(state.clients || []).map((c) => `<article class="ops-card"><div class="section-heading"><h3>${esc(c.name)}</h3><span class="badge">${c.active === false ? 'Inativo' : 'Ativo'}</span></div><p>${esc(c.responsible || 'Sem responsável informado')}</p><p class="notes">${esc([c.phone, c.whatsapp, c.email].filter(Boolean).join(' · '))}</p><div class="detail-actions"><button class="secondary" data-action="edit-client" data-id="${esc(c.id)}">Editar cadastro</button><button class="secondary" data-action="client-history" data-id="${esc(c.id)}">Histórico de pedidos</button></div></article>`).join('') || '<p class="ops-empty">Cadastre um cliente para reutilizar seus contatos em pedidos e orçamentos.</p>'}</div>`;
+    content = `<div class="ops-toolbar"><button class="primary" data-action="new-client">＋ Cadastrar cliente</button><label class="client-search">Pesquisar por nome ou CNPJ<input id="clientSearch" type="search" placeholder="Nome, nome fantasia ou CNPJ" value="${esc(clientSearch)}"></label></div><div id="clientCards" class="ops-cards">${clientCards()}</div>`;
   if (view === 'employees')
     content = `<button class="primary" data-action="new-employee">＋ Cadastrar funcionário</button><div class="ops-cards">${(state.employees || []).map((e) => `<article class="ops-card"><h3>${esc(e.name)}</h3><p>${esc(e.sector)} · ${e.active === false ? 'Inativo' : 'Ativo'}</p><button class="secondary" data-action="edit-employee" data-id="${esc(e.id)}">Editar funcionário</button></article>`).join('') || '<p class="ops-empty">Cadastre as pessoas para atribuir e concluir etapas de produção.</p>'}</div>`;
   if (view === 'queue') content = productionBoard();
@@ -145,6 +150,12 @@ function renderOperationsView() {
   }
   $('#opsWorkspace').innerHTML = `<div class="ops-heading"><h1>${title}</h1></div>${content}`;
   bindOperationButtons($('#opsWorkspace'));
+  if (view === 'clients')
+    $('#clientSearch').oninput = (e) => {
+      clientSearch = e.target.value;
+      $('#clientCards').innerHTML = clientCards();
+      bindOperationButtons($('#clientCards'));
+    };
   if (view === 'queue') {
     $('#queueSearch').oninput = (e) => {
       queueSearch = e.target.value;
@@ -261,6 +272,18 @@ function signTask(itemId, taskId) {
   );
   $('#opsForm .modal-actions .primary').textContent = 'Concluir e registrar assinatura';
 }
+function clientCards() {
+  return (
+    state.clients
+      .filter((c) => TrameDomain.matchesClient(c, clientSearch))
+      .map(
+        (c) =>
+          `<article class="ops-card"><div class="section-heading"><h3>${esc(c.name)}</h3><span class="badge">${c.active === false ? 'Inativo' : 'Ativo'}</span></div><p class="client-seller"><b>Vendedora responsável:</b> ${esc(c.seller || 'Não informada')}</p><p class="notes"><b>CPF / CNPJ:</b> ${esc(c.document || 'Não informado')}</p><p>${esc(c.responsible || 'Sem contato responsável informado')}</p><p class="notes">${esc([c.phone, c.whatsapp, c.email].filter(Boolean).join(' · '))}</p><div class="detail-actions"><button class="secondary" data-action="edit-client" data-id="${esc(c.id)}">Editar cadastro</button><button class="secondary" data-action="client-history" data-id="${esc(c.id)}">Histórico de pedidos</button></div></article>`
+      )
+      .join('') ||
+    '<p class="ops-empty">Nenhum cliente encontrado. Pesquise outro nome ou CNPJ, ou cadastre um cliente.</p>'
+  );
+}
 function openClient(id = null) {
   const c = state.clients.find((c) => c.id === id) || {},
     labels = {
@@ -279,7 +302,7 @@ function openClient(id = null) {
     `<div class="company-lookup">${inputField('CPF / CNPJ', 'document', c.document || '', 'text', 'maxlength="30" placeholder="00.000.000/0000-00"')}<button type="button" class="secondary" id="lookupClient">Consultar CNPJ</button></div>
     <p class="form-note">Consulta online de dados públicos. Revise antes de salvar o cliente. CPF é preenchido manualmente.</p>
     <p id="clientLookupMessage" class="form-note" role="status" aria-live="polite"></p>
-    <div class="form-grid">${inputField('Cliente / empresa', 'name', c.name || '', 'text', 'required maxlength="200"')}${inputField('Nome fantasia', 'tradeName', c.tradeName || '', 'text', 'maxlength="200"')}${selectField('Situação', 'active', option('true', 'Ativo', c.active !== false) + option('false', 'Inativo', c.active === false ? 'false' : ''))}${contactFields
+    <div class="form-grid">${inputField('Cliente / empresa', 'name', c.name || '', 'text', 'required maxlength="200"')}${inputField('Nome fantasia', 'tradeName', c.tradeName || '', 'text', 'maxlength="200"')}${inputField('Vendedora responsável', 'seller', c.seller || '', 'text', 'maxlength="200"')}${selectField('Situação', 'active', option('true', 'Ativo', c.active !== false) + option('false', 'Inativo', c.active === false ? 'false' : ''))}${contactFields
       .filter((k) => k !== 'document')
       .map((k) =>
         inputField(labels[k], k, c[k] || '', k === 'email' ? 'email' : 'text', 'maxlength="1000"')
@@ -292,7 +315,7 @@ function openClient(id = null) {
         row = { id: uid() };
         n.clients.push(row);
       }
-      ['name', 'tradeName', ...contactFields, 'notes'].forEach(
+      ['name', 'tradeName', 'seller', ...contactFields, 'notes'].forEach(
         (k) => (row[k] = f.elements[k].value.trim())
       );
       row.active = f.elements.active.value === 'true';
@@ -348,6 +371,7 @@ function populateClientSelector(o) {
     const c = state.clients.find((c) => c.id === f.elements.clientId.value);
     if (c) {
       f.elements.client.value = c.name;
+      f.elements.seller.value = c.seller || '';
       contactFields.forEach((k) => (f.elements[k].value = c[k] || ''));
     }
   };
@@ -906,6 +930,8 @@ function setupOperations() {
     ['navQuotes', 'quotes'],
     ['navClients', 'clients'],
     ['navQueue', 'queue'],
+    ['navEmbroidery', 'embroidery'],
+    ['navDtf', 'dtf'],
     ['navStock', 'stock'],
     ['navBilling', 'billing'],
     ['navEmployees', 'employees'],

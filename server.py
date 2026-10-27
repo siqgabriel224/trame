@@ -17,6 +17,7 @@ import ssl
 import access
 import network
 import operations
+import services
 from vendor.qrencoder import QRCode
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -113,6 +114,7 @@ def connect():
     con = sqlite3.connect(DB, timeout=20)
     con.execute("PRAGMA busy_timeout=20000")
     access.schema(con)
+    services.schema(con)
     con.execute(
         "CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY, revision INTEGER, payload TEXT)"
     )
@@ -433,6 +435,9 @@ class Handler(network.AuthenticatedHandler, BaseHTTPRequestHandler):
             "/app.js": ("app.js", "text/javascript; charset=utf-8"),
             "/commerce.js": ("commerce.js", "text/javascript; charset=utf-8"),
             "/operations.js": ("operations.js", "text/javascript; charset=utf-8"),
+            "/services.js": ("services.js", "text/javascript; charset=utf-8"),
+            "/service-print": ("service-print.html", "text/html; charset=utf-8"),
+            "/service-print.js": ("service-print.js", "text/javascript; charset=utf-8"),
             "/print": ("print.html", "text/html; charset=utf-8"),
             "/print.js": ("print.js", "text/javascript; charset=utf-8"),
             "/print.css": ("print.css", "text/css; charset=utf-8"),

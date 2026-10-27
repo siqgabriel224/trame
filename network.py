@@ -8,10 +8,11 @@ import os
 import secrets
 import ssl
 from contextlib import closing
-from urllib.parse import urlsplit, quote
+from urllib.parse import urlsplit, quote, parse_qs
 import access
 import cnpj
 import operations
+import services
 
 
 def configuration(home):
@@ -203,6 +204,34 @@ class AuthenticatedHandler:
                         ]
                     },
                 )
+            if path in ("/api/services", "/service-print"):
+                if not services.allowed(user):
+                    return self.reply(
+                        403,
+                        {
+                            "error": "Bordado e DTF são exclusivos do administrador e do perfil Bordador(a)."
+                        },
+                    )
+                if path == "/api/services":
+                    params = parse_qs(urlsplit(self.path).query)
+                    try:
+                        result = services.listing(
+                            con,
+                            params.get("technique", [""])[0],
+                            params.get("month", [""])[0],
+                            self.runtime.read_state(),
+                        )
+                        return self.reply(200, result)
+                    except (ValueError, TypeError) as exc:
+                        return self.reply(400, {"error": str(exc)})
+            if path == "/api/export":
+                if user["role"] != "admin":
+                    return self.reply(
+                        403, {"error": "A exportação completa é exclusiva do administrador."}
+                    )
+                return self.reply(
+                    200, dict(self.runtime.read_state(), services=services.export(con))
+                )
             if path in ("/api/users", "/api/audit"):
                 if user["role"] != "admin":
                     return self.reply(403, {"error": "Acesso exclusivo de administradores."})
@@ -225,7 +254,13 @@ class AuthenticatedHandler:
 
     def read_json(self):
         length = int(self.headers.get("Content-Length", 0))
-        limit = 120000000 if self.path in ("/api/state", "/api/changes") else 16384
+        limit = (
+            120000000
+            if self.path in ("/api/state", "/api/changes")
+            else 65536
+            if self.path == "/api/services/save"
+            else 16384
+        )
         if not 0 < length <= limit or self.headers.get_content_type() != "application/json":
             raise ValueError("Envie JSON dentro do limite permitido.")
         data = json.loads(self.rfile.read(length))
@@ -359,6 +394,41 @@ class AuthenticatedHandler:
                     return self.reply(
                         403, {"error": "Troque sua senha temporária antes de continuar."}
                     )
+                if self.path.startswith("/api/services/"):
+                    if not services.allowed(user):
+                        return self.reply(
+                            403,
+                            {
+                                "error": "Bordado e DTF são exclusivos do administrador e do perfil Bordador(a)."
+                            },
+                        )
+                    if self.path == "/api/services/reopen" and user["role"] != "admin":
+                        return self.reply(
+                            403, {"error": "Somente o administrador reabre um fechamento."}
+                        )
+                    business = self.runtime.defaults(
+                        json.loads(
+                            con.execute("SELECT payload FROM state WHERE id=1").fetchone()[0]
+                        )
+                    )
+                    if self.path == "/api/services/save":
+                        result = services.save(con, data, user, business)
+                    elif self.path in ("/api/services/receive", "/api/services/void-receipt"):
+                        result = services.receive(
+                            con, data, user, void=self.path.endswith("void-receipt")
+                        )
+                    elif self.path in ("/api/services/close", "/api/services/reopen"):
+                        result = services.close(
+                            con, data, user, business, reopen=self.path.endswith("reopen")
+                        )
+                    else:
+                        return self.reply(404, {"error": "Operação de serviço não encontrada."})
+                    con.commit()
+                    try:
+                        backup(self.runtime)
+                    except OSError as exc:
+                        print("Falha no backup diário:", exc, flush=True)
+                    return self.reply(200, result)
                 if self.path in ("/api/users/create", "/api/users/update"):
                     if user["role"] != "admin":
                         return self.reply(403, {"error": "Acesso exclusivo de administradores."})

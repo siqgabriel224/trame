@@ -4,8 +4,8 @@ Ambiente desta conferência: Windows, Python 3.12.14, SQLite 3.53.1 e cryptograp
 
 ## Resultado
 
-- 79 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência, inicialização, consulta CNPJ, isolamento da demonstração, medidas e assinaturas.
-- Cinco suítes JavaScript aprovadas: cálculos comerciais, operação, alterações por entidade, retorno do login, preenchimento CNPJ e confirmação da edição da empresa.
+- 85 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência, inicialização, consulta CNPJ, demonstração, medidas, assinaturas e serviços avulsos.
+- Seis suítes JavaScript aprovadas: cálculos comerciais, operação, alterações por entidade, retorno do login, preenchimento CNPJ, confirmação da empresa e pesquisa/cálculo de serviços.
 - Sintaxe dos arquivos JavaScript verificada pelo Node.js.
 - Análise Ruff sem ocorrências e formatação Python conferida.
 - Formatação Prettier conferida em HTML, CSS e JavaScript.
@@ -70,3 +70,13 @@ No navegador, a busca OS-0001 encontrou um registro arquivado. A OS-0022 foi edi
 Na OS-0016 fictícia, foi registrada a conclusão do bordado por João Alves através da conta de demonstração. A tela e a tabela impressa mostraram nome, data e conta que registrou; a etapa deixou de oferecer edição. As demais etapas mantiveram suas situações e nenhuma assinatura antiga foi presumida. A produção em largura de 390 pixels permaneceu sem transbordamento horizontal da página.
 
 A instalação principal recebeu os arquivos após backup. Estado operacional, revisão e todos os usuários permaneceram idênticos ao snapshot após o reinício. As alterações de exemplo foram feitas exclusivamente na demonstração. Impressão física e uso diário continuam pendentes de avaliação.
+
+## Clientes e serviços avulsos — 27/10/2026
+
+Os novos testes verificam pesquisa por nome sem acento e CNPJ com ou sem máscara, valores por unidade fracionária e manutenção de mil unidades ao reabrir o formulário. No servidor, foram verificados o perfil Bordador(a), bloqueio do funcionário comum e de acessos sem sessão/CSRF/origem válida, separação entre técnicas e OS, numeração, vendedora, valores, revisões, recebimentos, anulação e exportação.
+
+O fechamento foi testado com serviços concluídos e pendentes. Foram recusadas alterações em itens fechados e inclusões tardias no período; recebimentos posteriores mantiveram a cópia do fechamento. A reabertura exigiu administrador e motivo, e o fechamento seguinte preservou a versão anterior.
+
+Na interface, o CNPJ fictício sem máscara encontrou o cliente e exibiu sua vendedora. O cadastro de um bordado avulso de mil peças a R$ 1,50 e R$ 20,00 de preparação resultou em R$ 1.520,00. A reabertura preservou 1000 no campo de quantidade e a vendedora preenchida a partir do cliente. O fechamento de Bordado/10-2026 reuniu três serviços, totalizando R$ 2.635,00, e deixou dois pendentes fora. O fluxo de fechar, reabrir com motivo, fechar novamente e receber R$ 50,00 depois do fechamento foi conferido na base fictícia.
+
+O demonstrativo do cliente apresentou R$ 1.790,00 de serviços, R$ 320,00 recebidos e saldo de R$ 1.470,00. DTF exibiu seus lançamentos e quantidades em metros separadamente. A opção Bordador(a) apareceu no formulário de acessos, sem promover nenhuma conta existente. Os exemplos de serviços foram criados somente na demonstração e não geraram nem alteraram OS ou etapas de confecção. A prévia de impressão foi conferida; impressão física continua pendente.

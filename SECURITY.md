@@ -8,4 +8,6 @@ Senhas, chaves de primeiro acesso, certificados e banco de dados não devem apar
 
 O projeto está em desenvolvimento e não passou por auditoria independente. Backups precisam da mesma proteção do banco principal.
 
+Os serviços avulsos de Bordado e DTF são acessíveis somente aos perfis administrador e Bordador(a). A restrição é verificada nas rotas de leitura, escrita e impressão, além da navegação. Funcionários comuns não recebem esses registros pela API de estado das OS. A reabertura de fechamento e a exportação completa ficam restritas ao administrador. As permissões existentes não são promovidas automaticamente.
+
 O iniciador `demonstracao.py` cria um acesso conhecido somente para a base fictícia em `.demo/`, restrita ao próprio computador. Esse acesso é publicado para avaliação e não deve ser usado em uma instalação com dados reais. A pasta `.demo/` fica fora do Git e do pacote de código.

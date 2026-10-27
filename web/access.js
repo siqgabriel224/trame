@@ -44,6 +44,10 @@ TrameAccess.changes = (before, after) => {
 TrameAccess.permissions = () => {
   if (!TrameAccess.session) return;
   const admin = TrameAccess.session.user.role === 'admin';
+  for (const id of ['navEmbroidery', 'navDtf']) {
+    const button = document.getElementById(id);
+    if (button) button.hidden = !['admin', 'embroiderer'].includes(TrameAccess.session.user.role);
+  }
   for (const id of ['companyButton', 'export', 'warningDays']) {
     const e = document.getElementById(id);
     if (e) e.disabled = !admin;
@@ -129,7 +133,7 @@ async function accountHome() {
   const u = TrameAccess.session.user;
   accountShell(
     'Minha conta',
-    `<p class="notes">${esc(u.name)} · ${esc(u.username)} · ${u.role === 'admin' ? 'Administrador' : 'Funcionário'}</p><div class="detail-actions"><a class="secondary" href="/login?change=1">Trocar minha senha</a>${u.role === 'admin' ? '<button class="primary" id="manageAccounts">Acessos dos funcionários</button><button class="secondary" id="showAudit">Histórico de ações</button>' : ''}</div><p class="hint">Sua conta é individual. Saia ao terminar de usar um computador compartilhado.</p>`
+    `<p class="notes">${esc(u.name)} · ${esc(u.username)} · ${u.role === 'admin' ? 'Administrador' : u.role === 'embroiderer' ? 'Bordador(a) · Bordado e DTF' : 'Funcionário'}</p><div class="detail-actions"><a class="secondary" href="/login?change=1">Trocar minha senha</a>${u.role === 'admin' ? '<button class="primary" id="manageAccounts">Acessos dos funcionários</button><button class="secondary" id="showAudit">Histórico de ações</button>' : ''}</div><p class="hint">Sua conta é individual. Saia ao terminar de usar um computador compartilhado.</p>`
   );
   document.querySelector('#manageAccounts')?.addEventListener('click', accountUsers);
   document.querySelector('#showAudit')?.addEventListener('click', accountAudit);
@@ -139,7 +143,7 @@ async function accountUsers() {
     const users = await TrameAccess.request('/api/users');
     accountShell(
       'Acessos dos funcionários',
-      `<p class="notes">Funcionários podem consultar e operar pedidos, orçamentos, pagamentos, produção, entregas, clientes e estoque. Administradores também gerenciam contas, funcionários e configurações.</p><button id="createAccount" class="primary">＋ Criar acesso</button><div class="account-list">${users.map((u) => `<article class="account-person"><div><strong>${esc(u.name)}</strong><small>${esc(u.username)} · ${u.role === 'admin' ? 'Administrador' : 'Funcionário'} · ${u.active ? 'Ativo' : 'Desativado'}${u.mustChangePassword ? ' · Troca de senha pendente' : ''}</small></div><button class="secondary" data-account="${esc(u.id)}">Gerenciar acesso</button></article>`).join('')}</div>`
+      `<p class="notes">Funcionários podem consultar e operar pedidos, orçamentos, pagamentos, produção, entregas, clientes e estoque. O perfil Bordador(a) também acessa serviços avulsos de Bordado e DTF e seus fechamentos mensais. Administradores gerenciam contas, funcionários e configurações.</p><button id="createAccount" class="primary">＋ Criar acesso</button><div class="account-list">${users.map((u) => `<article class="account-person"><div><strong>${esc(u.name)}</strong><small>${esc(u.username)} · ${u.role === 'admin' ? 'Administrador' : u.role === 'embroiderer' ? 'Bordador(a) · Bordado e DTF' : 'Funcionário'} · ${u.active ? 'Ativo' : 'Desativado'}${u.mustChangePassword ? ' · Troca de senha pendente' : ''}</small></div><button class="secondary" data-account="${esc(u.id)}">Gerenciar acesso</button></article>`).join('')}</div>`
     );
     document.querySelector('#createAccount').onclick = () => accountForm();
     document
@@ -156,7 +160,7 @@ function accountForm(user = null) {
     typeof state !== 'undefined' && state ? state.employees.filter((e) => e.active) : [];
   accountShell(
     user ? 'Gerenciar acesso' : 'Criar acesso',
-    `<form id="accountForm" class="form-grid">${!user ? '<label>Nome<input name="name" required maxlength="150" autocomplete="off"></label><label>Login<input name="username" required minlength="3" maxlength="60" pattern="[a-zA-Z0-9._-]+" autocomplete="off"></label><label class="full">Vincular ao funcionário<select name="employeeId"><option value="">Sem vínculo</option>' + employees.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('') + '</select></label>' : `<p class="full notes">${esc(user.name)} · ${esc(user.username)}</p>`}<label>Perfil<select name="role"><option value="employee">Funcionário</option><option value="admin">Administrador</option></select></label>${user ? '<label>Situação<select name="active"><option value="true">Ativo</option><option value="false">Desativado</option></select></label>' : ''}<label class="full">${user ? 'Nova senha temporária (opcional)' : 'Senha temporária'}<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" ${user ? '' : 'required'}></label><p class="hint full">Ao criar ou redefinir a senha, a pessoa precisará trocá-la no próximo acesso. Alterar uma conta encerra suas sessões abertas.</p><div class="modal-actions full"><button type="button" class="secondary" id="cancelAccountForm">Voltar</button><button class="primary">Salvar acesso</button></div></form>`
+    `<form id="accountForm" class="form-grid">${!user ? '<label>Nome<input name="name" required maxlength="150" autocomplete="off"></label><label>Login<input name="username" required minlength="3" maxlength="60" pattern="[a-zA-Z0-9._-]+" autocomplete="off"></label><label class="full">Vincular ao funcionário<select name="employeeId"><option value="">Sem vínculo</option>' + employees.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('') + '</select></label>' : `<p class="full notes">${esc(user.name)} · ${esc(user.username)}</p>`}<label>Perfil<select name="role"><option value="employee">Funcionário</option><option value="embroiderer">Bordador(a) — Bordado e DTF</option><option value="admin">Administrador</option></select></label>${user ? '<label>Situação<select name="active"><option value="true">Ativo</option><option value="false">Desativado</option></select></label>' : ''}<label class="full">${user ? 'Nova senha temporária (opcional)' : 'Senha temporária'}<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" ${user ? '' : 'required'}></label><p class="hint full">Ao criar ou redefinir a senha, a pessoa precisará trocá-la no próximo acesso. Alterar uma conta encerra suas sessões abertas.</p><div class="modal-actions full"><button type="button" class="secondary" id="cancelAccountForm">Voltar</button><button class="primary">Salvar acesso</button></div></form>`
   );
   const f = document.querySelector('#accountForm');
   if (user) {

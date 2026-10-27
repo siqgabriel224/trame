@@ -27,6 +27,8 @@ server.py ── network.py ── access.py
 | `web/commerce.js` | Formulários e apresentação de valores |
 | `web/operations.js` | Operação de produção, materiais e entregas |
 | `web/access.js` | Sessão e envio de alterações por entidade |
+| `services.py` | Serviços avulsos, recebimentos e versões do fechamento mensal em tabelas próprias |
+| `web/services.js` | Lançamentos e fechamento de Bordado/DTF, separados das OS |
 | `web/theme.css` | Cores, tipografia, foco e fundamentos compartilhados entre aplicação, login e impressão |
 | `demonstracao.py` | Inicialização local com banco e acesso de demonstração separados |
 | `demo_data.py` | Histórico fictício construído pelas validações comerciais da aplicação |
@@ -49,6 +51,12 @@ server.py ── network.py ── access.py
 As assinaturas de execução são registradas nas etapas, com executor, data, conta autenticada que confirmou, origem do registro e horário do servidor. As rotas de alteração exigem assinatura na nova conclusão, conferem o vínculo do funcionário conectado e preservam etapas assinadas. Administradores podem transcrever a execução conforme a OS em papel, com essa origem identificada. Conclusões antigas não recebem assinaturas presumidas. Esse registro operacional não usa certificado digital.
 
 As grades continuam armazenadas como quantidades por chave: Feminino PP–GG, Masculino PP–GG e Sob medida. O texto `measurements` acompanha as peças sob medida, com validação de quantidade e conteúdo. Chaves antigas são mantidas, evitando atribuição presumida de gênero ou alteração de entregas anteriores.
+
+## Serviços avulsos
+
+Serviços avulsos usam `service_jobs` e `service_closings` no SQLite existente. Cada alteração compara a revisão do registro; a numeração é independente por técnica. As rotas `/api/services` e `/api/services/*` exigem administrador ou perfil `embroiderer`, sessão atualizada e, nas alterações, origem e CSRF. O estado compartilhado das OS não inclui essas tabelas. A exportação completa é exclusiva de administrador e reúne os dois conjuntos.
+
+O fechamento usa a data de conclusão dos serviços e guarda uma cópia dos itens e valores. Alterações em serviços concluídos no período fechado são recusadas; recebimentos posteriores preservam o total e atualizam o saldo. A reabertura exige administrador e justificativa, e o próximo fechamento preserva a versão anterior.
 
 ## Limites
 

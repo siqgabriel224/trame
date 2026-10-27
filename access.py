@@ -7,7 +7,7 @@ import secrets
 import time
 from http.cookies import SimpleCookie
 
-ROLES = ("admin", "employee")
+ROLES = ("admin", "employee", "embroiderer")
 IDLE_SECONDS = 1800
 MAX_SECONDS = 43200
 

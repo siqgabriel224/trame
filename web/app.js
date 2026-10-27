@@ -529,12 +529,19 @@ $('#warningDays').onchange = async (e) => {
   n.warningDays = Number(e.target.value);
   if (!(await save(n))) render();
 };
-$('#export').onclick = () => {
+$('#export').onclick = async () => {
   if (!state) return;
+  let exported;
+  try {
+    exported = await TrameAccess.request('/api/export');
+  } catch (error) {
+    toast(error.message, true);
+    return;
+  }
   const blob = new Blob(
       [
         JSON.stringify(
-          { ...state, exportedAt: new Date().toISOString(), app: 'radar-pedidos' },
+          { ...exported, exportedAt: new Date().toISOString(), app: 'radar-pedidos' },
           null,
           2
         ),

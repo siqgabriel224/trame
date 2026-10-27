@@ -23,6 +23,8 @@ Aplicação local em português, com servidor Python, SQLite e interface em HTML
 - Imprimir orçamento e ordem de serviço pelo navegador.
 - Criar acessos de administrador e funcionário, com registro de ações.
 - Consultar CNPJ nos cadastros da empresa e dos clientes, com revisão antes de salvar.
+- Pesquisar clientes por nome ou CNPJ e identificar a vendedora responsável.
+- Registrar serviços avulsos de Bordado/DTF em peças do cliente, com recebimentos e fechamento mensal por cliente.
 
 A consulta de CNPJ usa a [BrasilAPI](https://brasilapi.com.br/docs) e requer internet. O telefone e o e-mail podem não estar disponíveis; site e WhatsApp devem ser conferidos manualmente. Essa consulta é opcional e não impede o uso offline das demais funções.
 
@@ -85,6 +87,7 @@ Os testes usam bancos temporários. O verificador confere também a sintaxe Java
 - [Instalação, atualização e backup](docs/OPERACAO.md)
 - [Demonstração com histórico fictício](docs/DEMONSTRACAO.md)
 - [Grades, medidas, edição e execução da OS](docs/FLUXO-DA-OS.md)
+- [Clientes, serviços avulsos e fechamento mensal de Bordado/DTF](docs/SERVICOS-AVULSOS.md)
 - [Como contribuir](CONTRIBUTING.md)
 - [Cuidados com dados e segurança](SECURITY.md)
 - [Notas desta preparação](docs/ENTREGA.md)

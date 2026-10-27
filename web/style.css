@@ -1576,3 +1576,60 @@ dialog::backdrop {
 #bespokeSizes input {
   width: 100%;
 }
+
+/* Clientes e serviços em peças recebidas */
+.client-search {
+  flex: 1;
+  min-width: 220px;
+}
+.client-seller {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #eef4e7;
+  color: #294b35;
+  font-size: 13px;
+}
+.service-search {
+  display: block;
+  margin: 22px 0 14px;
+}
+.service-list {
+  display: grid;
+  gap: 20px;
+}
+.service-card h2 {
+  margin: 5px 0;
+  font-size: 21px;
+}
+.service-card .money-grid {
+  margin: 18px 0;
+}
+.service-tabs {
+  flex-wrap: wrap;
+}
+.service-payments {
+  margin-top: 18px;
+}
+.service-payments summary {
+  padding: 12px 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.service-closing {
+  margin-top: 24px;
+}
+.service-closing > .section-heading {
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .service-card h2 {
+    font-size: 18px;
+  }
+  .service-tabs {
+    width: 100%;
+  }
+  .client-search {
+    min-width: 0;
+    width: 100%;
+  }
+}
