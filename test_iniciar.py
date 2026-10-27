@@ -10,6 +10,11 @@ import server
 
 
 class Startup(unittest.TestCase):
+    def test_two_servers_cannot_share_the_same_port(self):
+        with server.TrameHTTPServer(("127.0.0.1", 0), server.Handler) as first:
+            with self.assertRaises(OSError):
+                server.TrameHTTPServer(("127.0.0.1", first.server_port), server.Handler)
+
     def test_busy_port_does_not_touch_database_or_open_browser(self):
         with (
             patch.dict(os.environ),

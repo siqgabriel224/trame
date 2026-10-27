@@ -20,6 +20,9 @@ Aplicação local em português, com servidor Python, SQLite e interface em HTML
 - Controlar parcelas e recebimentos, sem processar transações bancárias.
 - Imprimir orçamento e ordem de serviço pelo navegador.
 - Criar acessos de administrador e funcionário, com registro de ações.
+- Consultar CNPJ e preencher os dados públicos da empresa, com revisão antes de salvar.
+
+A consulta de CNPJ usa a [BrasilAPI](https://brasilapi.com.br/docs) e requer internet. O telefone e o e-mail podem não estar disponíveis; site e WhatsApp devem ser conferidos manualmente. Essa consulta é opcional e não impede o uso offline das demais funções.
 
 ## Executar no computador
 
@@ -87,6 +90,8 @@ As capturas usam somente clientes e pedidos fictícios, em uma base separada.
   <a href="docs/imagens/painel.png"><img src="docs/imagens/painel.png" width="260" alt="Painel de pedidos com prazos e valores fictícios"></a>
   <a href="docs/imagens/pedido.png"><img src="docs/imagens/pedido.png" width="260" alt="Pedido de demonstração com 20 peças e total de 718 reais"></a>
 </p>
+
+A [captura da consulta CNPJ](docs/imagens/consulta-cnpj.png) usa o CNPJ público de exemplo da documentação da BrasilAPI, sem salvar a empresa na base de demonstração.
 
 ## Autoria e distribuição
 

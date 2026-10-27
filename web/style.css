@@ -1414,6 +1414,32 @@ dialog::backdrop {
 .board-top {
   padding-bottom: 15px;
 }
+.company-lookup {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+.company-lookup label {
+  flex: 1;
+  min-width: 0;
+}
+.company-lookup button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+#companyLookupMessage:not(:empty) {
+  padding: 12px;
+  background: #f1f5ed;
+  border-radius: 8px;
+  color: #31543b;
+  line-height: 1.5;
+}
+@media (max-width: 480px) {
+  .company-lookup {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
 .side-bottom {
   padding-top: 15px;
 }

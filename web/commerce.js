@@ -15,7 +15,7 @@ const commercialFields = [
   'paymentTerms',
   'quoteNotes',
 ];
-const companyFields = ['name', 'document', 'phone', 'email', 'address', 'website'];
+const companyFields = ['name', 'tradeName', 'document', 'phone', 'email', 'address', 'website'];
 const techniqueNames = ['Bordado', 'Silk', 'DTF'];
 const brl = (cents) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
@@ -253,6 +253,7 @@ function setupCommerce() {
     render();
   };
   $('#companyButton').onclick = () => {
+    TrameCompany.reset();
     const f = $('#companyForm');
     companyFields.forEach((k) => (f.elements[k].value = state.company?.[k] || ''));
     $('#companyDialog').showModal();

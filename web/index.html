@@ -7,6 +7,7 @@
     <title>Tramê</title>
     <link rel="stylesheet" href="/style.css" />
     <script defer src="/domain.js"></script>
+    <script defer src="/company.js"></script>
     <script defer src="/commerce.js"></script>
     <script defer src="/operations.js"></script>
     <script defer src="/access.js"></script>
@@ -316,9 +317,25 @@
           <button type="button" class="icon close" aria-label="Fechar dados da empresa">×</button>
         </div>
         <p class="form-note">Aparecem no cabeçalho dos orçamentos e ordens de serviço.</p>
+        <div class="company-lookup">
+          <label
+            >CPF / CNPJ<input
+              name="document"
+              form="companyForm"
+              maxlength="30"
+              placeholder="00.000.000/0000-00"
+              autocomplete="off"
+          /></label>
+          <button type="button" class="secondary" id="lookupCompany">Consultar CNPJ</button>
+        </div>
+        <p class="form-note">
+          Consulta online de dados públicos pela BrasilAPI. Revise os dados antes de salvar. CPF é
+          preenchido manualmente.
+        </p>
+        <p id="companyLookupMessage" class="form-note" role="status" aria-live="polite"></p>
         <div class="form-grid">
           <label class="full">Nome / razão social<input name="name" maxlength="200" /></label
-          ><label>CPF / CNPJ<input name="document" maxlength="30" /></label
+          ><label class="full">Nome fantasia<input name="tradeName" maxlength="200" /></label
           ><label>Telefone / WhatsApp<input name="phone" maxlength="60" /></label
           ><label>E-mail<input name="email" type="email" maxlength="200" /></label
           ><label>Site / rede social<input name="website" maxlength="300" /></label

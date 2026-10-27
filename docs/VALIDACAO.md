@@ -4,8 +4,8 @@ Ambiente desta conferência: Windows, Python 3.12.14, SQLite 3.53.1 e cryptograp
 
 ## Resultado
 
-- 59 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência e inicialização.
-- Quatro suítes JavaScript aprovadas: cálculos comerciais, operação, alterações por entidade e retorno do login.
+- 70 testes Python aprovados: regras comerciais, estoque, produção, entregas, autenticação, autorização, TLS, concorrência, inicialização e consulta CNPJ.
+- Cinco suítes JavaScript aprovadas: cálculos comerciais, operação, alterações por entidade, retorno do login e preenchimento da empresa.
 - Sintaxe dos arquivos JavaScript verificada pelo Node.js.
 - Análise Ruff sem ocorrências e formatação Python conferida.
 - Formatação Prettier conferida em HTML, CSS e JavaScript.
@@ -24,3 +24,13 @@ As [capturas](imagens/pedido.png) mostram somente dados fictícios.
 O workflow remoto do GitHub, outras versões de Python, Linux, versões antigas do Windows, impressora física e uso diário na empresa não foram verificados nesta preparação. A edição limpa não inclui os executáveis históricos nem promete compatibilidade física com Windows 7.
 
 O banco original e os atalhos da instalação anterior não foram alterados.
+
+## Consulta de CNPJ
+
+A consulta real do CNPJ público usado na documentação da BrasilAPI preencheu razão social, nome fantasia, telefone e endereço no formulário de demonstração. A ausência de e-mail foi informada na tela, sem salvar a empresa automaticamente. O nome fantasia também foi incluído no cabeçalho dos documentos impressos.
+
+Os testes simulam falta de internet, CNPJ não encontrado, resposta inválida e tentativa de consulta sem permissão. Também conferem que trocar o CNPJ, editar campos ou fechar o formulário durante a consulta impede sobrescritas incorretas.
+
+A atualização foi aplicada à instalação da área de trabalho com backup prévio de código e banco. O conteúdo de pedidos e empresa permaneceu idêntico ao backup após o reinício. Durante a atualização foram encontradas duas instâncias do servidor na mesma porta; o servidor agora usa porta exclusiva no Windows, com teste de regressão para impedir a repetição.
+
+Uma execução intermediária apresentou um erro e o resumo não permitiu recuperar o diagnóstico. A execução completa seguinte, com log integral, aprovou os 70 testes. Não foi atribuída uma causa à falha intermediária; acompanhar caso volte a ocorrer.

@@ -10,6 +10,7 @@ import ssl
 from contextlib import closing
 from urllib.parse import urlsplit, quote
 import access
+import cnpj
 
 
 def configuration(home):
@@ -236,12 +237,35 @@ class AuthenticatedHandler:
             + secure
         )
 
+    def company_lookup(self, data):
+        with closing(self.runtime.connect()) as con:
+            user = access.session(con, self.headers.get("Cookie"))
+            if not user:
+                return self.reply(401, {"error": "Entre com seu login para continuar."})
+            if not hmac.compare_digest(self.headers.get("X-CSRF-Token", ""), user["csrf"]):
+                return self.reply(403, {"error": "Atualize a sessão antes de continuar."})
+            if user["must_change"] or user["role"] != "admin":
+                return self.reply(
+                    403,
+                    {
+                        "error": "Somente administradores com a senha atualizada consultam os dados da empresa."
+                    },
+                )
+        # A consulta externa não segura o bloqueio de escrita dos pedidos.
+        try:
+            result = cnpj.lookup(data.get("cnpj"))
+        except cnpj.LookupError as exc:
+            return self.reply(exc.status, {"error": str(exc)})
+        return self.reply(200, result)
+
     def do_POST(self):
         origin = self.authority()
         if not origin or self.headers.get("Origin") != origin:
             return self.reply(403, {"error": "Origem recusada."})
         try:
             data = self.read_json()
+            if self.path == "/api/company/cnpj":
+                return self.company_lookup(data)
             with self.runtime.LOCK, closing(self.runtime.connect()) as con:
                 con.execute("BEGIN IMMEDIATE")
                 if self.path == "/api/setup":

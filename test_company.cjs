@@ -1,0 +1,120 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const result = {
+  company: {
+    document: '19.131.243/0001-97',
+    name: 'OFICINA EXEMPLO',
+    tradeName: 'Oficina',
+    phone: '(11) 3333-4444',
+    email: '',
+    address: 'Rua Exemplo, 100',
+  },
+  source: 'BrasilAPI',
+  status: 'ATIVA',
+};
+function setup(request) {
+  const elements = Object.fromEntries(
+    ['name', 'tradeName', 'document', 'phone', 'email', 'address', 'website'].map((key) => [
+      key,
+      { value: '' },
+    ])
+  );
+  elements.document.value = '19131243000197';
+  const form = { elements };
+  const button = {};
+  const message = {};
+  const dialog = {
+    addEventListener(event, callback) {
+      this[event] = callback;
+    },
+  };
+  const context = vm.createContext({
+    document: {
+      getElementById: (id) =>
+        ({
+          companyForm: form,
+          lookupCompany: button,
+          companyLookupMessage: message,
+          companyDialog: dialog,
+        })[id],
+    },
+    TrameAccess: { request },
+  });
+  vm.runInContext(fs.readFileSync('web/company.js', 'utf8'), context);
+  return { elements, button, message, dialog };
+}
+async function main() {
+  let calls = 0;
+  const success = setup(async (path, data) => {
+    calls++;
+    assert.equal(path, '/api/company/cnpj');
+    assert.equal(data.cnpj, '19131243000197');
+    return result;
+  });
+  success.elements.email.value = 'contato@example.com';
+  success.elements.website.value = 'https://example.com';
+  await success.button.onclick();
+  assert.equal(success.elements.name.value, 'OFICINA EXEMPLO');
+  assert.equal(success.elements.email.value, 'contato@example.com');
+  assert.equal(success.elements.website.value, 'https://example.com');
+  assert.match(success.message.textContent, /Revise e clique em Salvar/);
+  assert.match(success.message.textContent, /e-mail/);
+  assert.equal(calls, 1);
+
+  const offline = setup(async () => {
+    throw Error('Sem conexão');
+  });
+  offline.elements.name.value = 'Nome manual';
+  await offline.button.onclick();
+  assert.equal(offline.elements.name.value, 'Nome manual');
+  assert.equal(offline.message.textContent, 'Sem conexão');
+  assert.equal(offline.button.disabled, false);
+
+  let resolve;
+  const stale = setup(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      })
+  );
+  const pending = stale.button.onclick();
+  stale.elements.document.value = '00000000000191';
+  resolve(result);
+  await pending;
+  assert.equal(stale.elements.name.value, '');
+  assert.match(stale.message.textContent, /CNPJ foi alterado/);
+
+  const editing = setup(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      })
+  );
+  const inProgress = editing.button.onclick();
+  editing.elements.phone.value = 'Telefone manual';
+  resolve(result);
+  await inProgress;
+  assert.equal(editing.elements.phone.value, 'Telefone manual');
+  assert.equal(editing.elements.name.value, 'OFICINA EXEMPLO');
+
+  const closed = setup(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      })
+  );
+  const closing = closed.button.onclick();
+  closed.dialog.close();
+  resolve(result);
+  await closing;
+  assert.equal(closed.elements.name.value, '');
+  assert.equal(closed.message.textContent, '');
+  console.log(
+    'PASS: consulta sem salvamento automático, falhas preservam dados e respostas antigas não sobrescrevem edições.'
+  );
+}
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

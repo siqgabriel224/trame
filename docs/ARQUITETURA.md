@@ -20,6 +20,8 @@ server.py ── network.py ── access.py
 | `server.py` | Rotas, validação comercial, revisão dos registros e persistência |
 | `operations.py` | Cadastros, etapas, materiais, parcelas e entregas |
 | `access.py` | Senhas, sessões, perfis e auditoria |
+| `cnpj.py` | Consulta opcional à BrasilAPI, com tempo e tamanho de resposta limitados |
+| `web/company.js` | Preenchimento dos dados públicos sem salvamento automático |
 | `network.py` | HTTP autenticado, proteção de origem, conflitos e backup |
 | `web/domain.js` | Cálculos compartilhados entre telas e impressão |
 | `web/commerce.js` | Formulários e apresentação de valores |
@@ -44,3 +46,11 @@ server.py ── network.py ── access.py
 Não há emissão fiscal, transação bancária, assinatura digital ou sincronização entre computadores. O iniciador público força uso local. O suporte de rede existente no código requer configuração de certificado e administração própria; não faz parte do fluxo padrão.
 
 O servidor usa a biblioteca padrão do Python e não foi dimensionado para hospedagem pública. Testes automatizados não substituem avaliação com usuários, impressora e dados de uma operação real.
+
+## Consulta de CNPJ
+
+O botão em Dados da empresa envia apenas o CNPJ para a rota autenticada `POST /api/company/cnpj`. O servidor consulta um endereço HTTPS fixo da BrasilAPI, sem enviar contas, pedidos ou dados do banco. A consulta fica restrita a administradores com senha atualizada, valida origem e CSRF e não mantém o bloqueio de escrita dos pedidos enquanto aguarda a fonte externa.
+
+São aceitos CNPJs numéricos e alfanuméricos no formato documentado pela fonte. A validação cadastral é feita pelo provedor. O retorno é reduzido a razão social, nome fantasia, CNPJ, endereço, telefone, e-mail e situação cadastral; quadro societário e outros dados não são repassados para o navegador.
+
+Consultar não grava empresa nem revisão. Campos não informados pela fonte e edições feitas enquanto a resposta chega são preservados. Trocar o CNPJ ou fechar o formulário invalida uma resposta pendente. O usuário revisa o resultado e escolhe Salvar empresa.

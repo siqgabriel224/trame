@@ -1,10 +1,11 @@
-"""Radar local. Python 3, biblioteca padrão e SQLite; sem serviços externos."""
+"""Tramê local: biblioteca padrão, SQLite e consulta cadastral online opcional."""
 
 import base64
 import copy
 import json
 import os
 import sqlite3
+import socket
 import threading
 from contextlib import closing
 from datetime import date
@@ -152,7 +153,7 @@ def validate(data, old):
     company = data.get("company", {})
     if not isinstance(company, dict):
         raise ValueError("Dados da empresa inválidos.")
-    text_fields(company, ["name", "document", "phone", "email", "address", "website"])
+    text_fields(company, ["name", "tradeName", "document", "phone", "email", "address", "website"])
     seen_orders, seen_items = set(), set()
     for order in data["orders"]:
         oid = order.get("id")
@@ -349,8 +350,14 @@ def validate(data, old):
 
 
 class TrameHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = os.name != "nt"
     daemon_threads = True
     tls_context = None
+
+    def server_bind(self):
+        if os.name == "nt":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
     def get_request(self):
         connection, address = super().get_request()
@@ -408,6 +415,7 @@ class Handler(network.AuthenticatedHandler, BaseHTTPRequestHandler):
             svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {count + 8} {count + 8}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="white"/><g fill="black">{rects}</g></svg>'
             return self.reply(200, svg.encode(), "image/svg+xml")
         files = {
+            "/company.js": ("company.js", "text/javascript; charset=utf-8"),
             "/": ("index.html", "text/html; charset=utf-8"),
             "/app.js": ("app.js", "text/javascript; charset=utf-8"),
             "/commerce.js": ("commerce.js", "text/javascript; charset=utf-8"),
