@@ -167,7 +167,10 @@ function updatePricePreview() {
   try {
     const i = {
       sizes: Object.fromEntries(
-        $$('#sizes input').map((x) => [x.dataset.size, Number(x.value || 0)])
+        $$('#sizes input:not(:disabled), #bespokeSizes input:not(:disabled)').map((x) => [
+          x.dataset.size,
+          Number(x.value || 0),
+        ])
       ),
     };
     readItemCommerce(i, $('#itemForm'));

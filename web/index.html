@@ -81,8 +81,8 @@
             ><input
               type="search"
               id="search"
-              placeholder="Buscar cliente ou descrição…"
-              aria-label="Buscar pedidos"
+              placeholder="Número do pedido, cliente ou descrição…"
+              aria-label="Buscar por número do pedido, cliente ou descrição"
             />
           </div>
           <div id="orderList"></div>
@@ -205,7 +205,24 @@
           ><label>Cor do tecido<input name="color" maxlength="100" /></label>
           <div class="full">
             <label>Grade de tamanhos <span class="hint">Quantidade por tamanho</span></label>
-            <div id="sizes" class="sizes"></div>
+            <div id="sizes"></div>
+            <label class="check made-to-measure"
+              ><input type="checkbox" id="madeToMeasure" /> Sob medida</label
+            >
+            <div id="measurementsArea" hidden>
+              <label
+                >Medidas e identificação das peças<textarea
+                  name="measurements"
+                  rows="4"
+                  maxlength="5000"
+                  placeholder="Ex.: Ana — busto 92 cm, cintura 74 cm, comprimento 65 cm. Informe a unidade e identifique cada pessoa ou peça."
+                ></textarea>
+              </label>
+              <p class="hint">
+                As medidas serão incluídas na OS. A quantidade de peças sob medida entra no total e
+                no preço.
+              </p>
+            </div>
             <div class="custom-size">
               <input id="customSize" placeholder="Outro tamanho (ex.: 38)" maxlength="15" /><button
                 type="button"

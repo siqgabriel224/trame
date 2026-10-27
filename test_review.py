@@ -196,6 +196,34 @@ class HTTPReview(unittest.TestCase):
         _, body = self.request("/api/state")
         self.assertEqual(json.loads(body)["revision"], 0)
 
+    def test_authenticated_completion_stamps_and_preserves_signature(self):
+        from test_operations import Operations
+
+        data = Operations().task_fixture()
+        data["revision"] = 0
+        status, body = self.request("/api/state", data)
+        self.assertEqual(status, 200)
+        current = json.loads(body)
+        candidate = copy.deepcopy(current)
+        item = candidate["orders"][0]["items"][0]
+        item["approved"] = True
+        item["tasks"][0]["stage"] = "Concluído"
+        self.assertEqual(self.request("/api/state", candidate)[0], 400)
+        item["tasks"][0]["signature"] = {
+            "name": "Pessoa teste",
+            "date": "2026-10-20",
+            "confirmed": True,
+            "recordedBy": {"name": "Inventado"},
+        }
+        status, body = self.request("/api/state", candidate)
+        self.assertEqual(status, 200)
+        signed = json.loads(body)
+        task = signed["orders"][0]["items"][0]["tasks"][0]
+        self.assertEqual(task["signature"]["recordedBy"]["name"], "Teste")
+        self.assertEqual(task["completedAt"], "2026-10-20")
+        task["signature"]["name"] = "Troca"
+        self.assertEqual(self.request("/api/state", signed)[0], 400)
+
     def test_save_conflict_and_origin_protection(self):
         data = fixture()
         data["revision"] = 0

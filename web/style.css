@@ -1454,3 +1454,125 @@ dialog::backdrop {
     gap: 14px;
   }
 }
+
+/* Grades e acompanhamento da OS */
+.size-group {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8faf5;
+}
+.size-group h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+.made-to-measure {
+  margin: 18px 0 12px;
+}
+#measurementsArea textarea {
+  min-height: 110px;
+}
+#otherSizes:empty {
+  display: none;
+}
+.order-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.preserve {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.production-search {
+  flex: 1;
+  min-width: 200px;
+}
+.production-orders {
+  display: grid;
+  gap: 22px;
+}
+.production-order {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+.production-order h2 {
+  margin: 4px 0 8px;
+  font-size: 22px;
+}
+.production-order p {
+  overflow-wrap: anywhere;
+}
+.production-model {
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.production-model h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+.production-step {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.production-step > div:first-child {
+  min-width: 0;
+}
+.production-step small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
+.step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.signature-record {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #24523c;
+}
+.unsigned-warning {
+  color: #86601c !important;
+}
+@media (max-width: 760px) {
+  .production-order {
+    padding: 16px;
+  }
+  .production-model {
+    padding: 12px;
+  }
+  .production-step {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .step-actions {
+    justify-content: flex-start;
+  }
+}
+
+.production-steps > summary {
+  padding: 14px;
+  border-radius: 8px;
+  background: #f0f5e9;
+  cursor: pointer;
+  font-weight: 600;
+}
+#bespokeSizes {
+  display: block;
+  max-width: 230px;
+}
+#bespokeSizes input {
+  width: 100%;
+}

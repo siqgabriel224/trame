@@ -1,7 +1,61 @@
 'use strict';
 // Regras de cálculo compartilhadas pela aplicação e pelos documentos impressos.
 const TrameDomain = (() => {
+  const standardSizes = ['PP', 'P', 'M', 'G', 'GG'];
+  const sizeGroups = (sizes = {}) => {
+    const groups = ['Feminino', 'Masculino'].map((group) => ({
+      label: group,
+      rows: standardSizes.map((size) => [`${group} ${size}`, sizes[`${group} ${size}`] || 0]),
+    }));
+    const standard = new Set(groups.flatMap((g) => g.rows.map(([key]) => key)));
+    const legacy = Object.entries(sizes).filter(
+      ([key]) => !standard.has(key) && key !== 'Sob medida'
+    );
+    if (legacy.length) groups.push({ label: 'Grade anterior / outros tamanhos', rows: legacy });
+    return groups;
+  };
+  const orderNumberQuery = (query) => {
+    const match = String(query)
+      .trim()
+      .match(/^(?:(?:os|pedido|orç|orc|orçamento|orcamento|#)\s*[-#:]?\s*)?(\d+)$/i);
+    return match ? Number(match[1]) : null;
+  };
+  const matchesOrder = (order, query) => {
+    const number = orderNumberQuery(query);
+    if (number !== null)
+      return (order.kind === 'quote' ? order.quoteNumber : order.osNumber) === number;
+    return [order.client, order.description, order.responsible, order.seller]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('pt-BR')
+      .includes(String(query).trim().toLocaleLowerCase('pt-BR'));
+  };
   const quantity = (i) => Object.values(i.sizes || {}).reduce((sum, n) => sum + n, 0);
+  const productionSectors = (i) => [
+    'Separação',
+    'Corte',
+    'Costura',
+    ...techniques(i).map((t) => t.type),
+    'Acabamento',
+    'Revisão',
+    'Expedição',
+  ];
+  const productionTasks = (i) => {
+    const sequence = [
+      'Separação',
+      'Corte',
+      'Costura',
+      'Bordado',
+      'Silk',
+      'DTF',
+      'Acabamento',
+      'Revisão',
+      'Expedição',
+    ];
+    return [...(i.tasks || [])].sort(
+      (a, b) => sequence.indexOf(a.sector) - sequence.indexOf(b.sector)
+    );
+  };
   const techniques = (i) =>
     i.techniques ||
     (i.embroidery
@@ -62,6 +116,11 @@ const TrameDomain = (() => {
     return { onHand, reserved, available: onHand - reserved };
   }
   return Object.freeze({
+    sizeGroups,
+    orderNumberQuery,
+    matchesOrder,
+    productionSectors,
+    productionTasks,
     quantity,
     techniques,
     itemMoney,

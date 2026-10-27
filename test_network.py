@@ -91,7 +91,7 @@ class NetworkFlow(unittest.TestCase):
             "/api/changes", {"changes": [{"key": key, "id": cid, "before": before, "after": after}]}
         )
 
-    def employee(self):
+    def employee(self, employee_id=""):
         self.assertEqual(
             self.client.request(
                 "/api/users/create",
@@ -100,6 +100,7 @@ class NetworkFlow(unittest.TestCase):
                     "username": "funcionario",
                     "password": "temporaria-funcionario",
                     "role": "employee",
+                    "employeeId": employee_id,
                 },
             )[0],
             200,
@@ -108,8 +109,8 @@ class NetworkFlow(unittest.TestCase):
         self.assertEqual(c.login("funcionario", "temporaria-funcionario")[0], 200)
         return c
 
-    def activate_employee(self):
-        c = self.employee()
+    def activate_employee(self, employee_id=""):
+        c = self.employee(employee_id)
         self.assertEqual(
             c.request(
                 "/api/password",
@@ -257,7 +258,16 @@ class NetworkFlow(unittest.TestCase):
     def test_employee_quote_os_payment_delivery_and_authenticated_print(self):
         from datetime import date, timedelta
 
-        c = self.activate_employee()
+        self.assertEqual(
+            self.change(
+                "employees",
+                "executor",
+                None,
+                {"id": "executor", "name": "Funcionário teste", "sector": "Costura"},
+            )[0],
+            200,
+        )
+        c = self.activate_employee("executor")
         day = date.today().isoformat()
         due = (date.today() + timedelta(days=7)).isoformat()
         order = {
@@ -314,6 +324,28 @@ class NetworkFlow(unittest.TestCase):
             )
         )
         result = update(lambda o: o["items"][0].update(stage="Em produção"))
+        result = update(
+            lambda o: o["items"][0]["tasks"].append(
+                {
+                    "id": "sewing",
+                    "sector": "Costura",
+                    "employeeId": "executor",
+                    "due": due,
+                    "qty": 10,
+                    "stage": "Pendente",
+                }
+            )
+        )
+        result = update(
+            lambda o: o["items"][0]["tasks"][0].update(
+                stage="Concluído",
+                signature={"name": "Funcionário teste", "date": day, "confirmed": True},
+            )
+        )
+        self.assertEqual(
+            result["orders"][0]["items"][0]["tasks"][0]["signature"]["source"],
+            "Responsável conectado",
+        )
         result = update(lambda o: o["items"][0].update(stage="Pronto"))
         result = update(
             lambda o: o["payments"].append(

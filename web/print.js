@@ -15,18 +15,18 @@ function row(label, value) {
 const quantity = TrameDomain.quantity;
 const itemAmounts = TrameDomain.itemMoney;
 function signatureRows(o) {
-  const rows = [
-    ['Conferência inicial / separação', ''],
-    ['Corte / costura', ''],
-  ];
-  for (const type of ['Bordado', 'Silk', 'DTF'])
-    for (const i of o.items)
-      if (i.techniques?.some((t) => t.type === type))
-        rows.push([type, `${i.type} · ${i.color || 'cor não informada'} · ${quantity(i)} peças`]);
-  rows.push(['Acabamento', ''], ['Revisão / qualidade', ''], ['Embalagem / expedição', '']);
+  const rows = o.items.flatMap((item, index) => {
+    const tasks = item.tasks?.length
+      ? TrameDomain.productionTasks(item)
+      : TrameDomain.productionSectors(item).map((sector) => ({ sector, qty: quantity(item) }));
+    return tasks.map((task) => ({
+      task,
+      model: `Modelo ${index + 1} · ${item.type} · ${item.color || 'cor não informada'}`,
+    }));
+  });
   const extra = Math.max(0, Math.min(30, Number(document.querySelector('#extraRows').value) || 0));
-  for (let i = 0; i < extra; i++) rows.push(['Outra atividade', '']);
-  return `<section class="signatures"><h2>Registro de execução · quem fizer, preenche e assina</h2><p>Se mais de uma pessoa atuar na mesma etapa, use outra linha e identifique a atividade/modelo.</p><table><thead><tr><th>Etapa / modelo</th><th>Data</th><th>Qtd.</th><th>Nome de quem executou</th><th>Assinatura</th></tr></thead><tbody>${rows.map(([s, m]) => `<tr><td><strong>${escapeHTML(s)}</strong>${m ? `<small>${escapeHTML(m)}</small>` : ''}</td><td></td><td></td><td></td><td></td></tr>`).join('')}</tbody></table><div class="delivery-sign"><div>Entregue por: ______________________________<br>Data: ____/____/________</div><div>Recebido por (cliente): ______________________<br>Assinatura: _______________________________</div></div></section>`;
+  for (let i = 0; i < extra; i++) rows.push({ task: { sector: 'Outra atividade' }, model: '' });
+  return `<section class="signatures"><h2>OS-${String(o.osNumber).padStart(4, '0')} · Execução e assinaturas por etapa</h2><p>Quem executa preenche e assina a sua etapa. Registre depois a conclusão no Tramê. Etapas antigas sem assinatura não comprovam o responsável pela execução.</p><table><thead><tr><th>Etapa / modelo</th><th>Data</th><th>Qtd.</th><th>Responsável</th><th>Assinatura / registro</th></tr></thead><tbody>${rows.map(({ task, model }) => `<tr><td><strong>${escapeHTML(task.sector)}</strong><small>${escapeHTML(model)}</small></td><td>${task.signature ? fullDate(task.signature.date) : ''}</td><td>${task.qty || ''}</td><td>${escapeHTML(task.signature?.name || '')}</td><td>${task.signature ? `${escapeHTML(task.signature.name)}<small>${escapeHTML(task.signature.source)} · por ${escapeHTML(task.signature.recordedBy?.name || '')}</small>` : ''}</td></tr>`).join('')}</tbody></table><div class="delivery-sign"><div>Entregue por: ______________________________<br>Data: ____/____/________</div><div>Recebido por (cliente): ______________________<br>Assinatura: _______________________________</div></div></section>`;
 }
 async function loadDocument() {
   try {
@@ -75,14 +75,14 @@ async function loadDocument() {
       `<header class="document-header"><div><div class="brand">${escapeHTML(company.name || 'Tramê')}</div><p>${[company.tradeName, company.document, company.phone, company.email, company.website, company.address].filter(Boolean).map(escapeHTML).join('<br>')}</p></div><div class="document-code"><h1>${title}</h1><strong>${code}</strong><p>Emitido em ${new Date().toLocaleDateString('pt-BR')}</p>${o.archived ? '<b>ARQUIVADO</b>' : ''}</div></header><section><h2>Cliente e atendimento</h2><div class="info-grid">${row('Cliente', o.client)}${row('CPF / CNPJ', o.document)}${row('Responsável pelo pedido (cliente)', o.responsible || 'Não informado')}${row('Vendedora / vendedor', o.seller || 'Não informado')}${row('Telefone', o.phone)}${row('WhatsApp', o.whatsapp)}${row('E-mail', o.email)}${row('Instagram', o.instagram)}${row('Site', o.website)}${row('Outros contatos', o.otherContact)}${row('Endereço de entrega', o.address)}${row('Data de entrada', fullDate(o.entry))}${row('Prazo / previsão de entrega', fullDate(o.due))}${isQuote ? row('Validade do orçamento', fullDate(o.validUntil)) : ''}</div><p class="description">${escapeHTML(o.description)}</p></section>${!o.items.length ? '<p>Nenhum modelo cadastrado.</p>' : ''}${o.items
         .map((i, index) => {
           const m = itemAmounts(i);
-          return `<section class="piece"><h2>Modelo ${index + 1} · ${escapeHTML(i.type)} · ${quantity(i)} peças</h2><div class="piece-content"><div class="specs"><p>${escapeHTML(i.description)}</p><p><b>Tecido:</b> ${escapeHTML(i.fabric || '—')} &nbsp; <b>Cor:</b> ${escapeHTML(i.color || '—')}</p><p><b>Grade:</b> ${Object.entries(
+          return `<section class="piece"><h2>${code} · Modelo ${index + 1} · ${escapeHTML(i.type)} · ${quantity(i)} peças</h2><div class="piece-content"><div class="specs"><p>${escapeHTML(i.description)}</p><p><b>Tecido:</b> ${escapeHTML(i.fabric || '—')} &nbsp; <b>Cor:</b> ${escapeHTML(i.color || '—')}</p><p><b>Grade:</b> ${Object.entries(
             i.sizes
           )
             .filter(([, n]) => n)
             .map(([s, n]) => `${escapeHTML(s)}: ${n}`)
             .join(
               ' · '
-            )}</p><p><b>Layout:</b> ${i.approved ? 'APROVADO' : 'AGUARDANDO APROVAÇÃO · NÃO PRODUZIR'}</p><p><b>Andamento:</b> ${escapeHTML(i.stage)}</p>${(i.techniques || []).map((t) => `<p><b>${escapeHTML(t.type)}:</b> ${escapeHTML(t.location || 'Local não informado')} · ${escapeHTML(t.description || 'Sem detalhes')}</p>`).join('') || '<p>Sem bordado, silk ou DTF.</p>'}${i.customizations ? `<p><b>Outras personalizações:</b> ${escapeHTML(i.customizations)}</p>` : ''}${i.notes ? `<p class="preserve"><b>Produção:</b> ${escapeHTML(i.notes)}</p>` : ''}</div>${i.image ? `<figure><img src="${escapeHTML(i.image)}" alt="Layout do modelo ${index + 1}"><figcaption>Layout de referência</figcaption></figure>` : ''}</div>${true ? `<table class="prices commercial-values"><thead><tr><th>Composição do preço</th><th>Por peça</th><th>Preparação única</th></tr></thead><tbody><tr><td>Peça sem personalização</td><td>${currency(i.unitPriceCents || 0)}</td><td>—</td></tr>${(i.techniques || []).map((t) => `<tr><td>${escapeHTML(t.type)}</td><td>${currency(t.unitCents || 0)}</td><td>${currency(t.setupCents || 0)}</td></tr>`).join('')}<tr class="line-total"><td>${quantity(i)} peças × ${currency(m.unit)} + ${currency(m.setup)} preparação</td><td colspan="2">Total do modelo: ${currency(m.total)}</td></tr></tbody></table>` : ''}</section>`;
+            )}</p>${i.madeToMeasure || i.sizes['Sob medida'] ? `<p class="preserve"><b>Sob medida:</b> ${escapeHTML(i.measurements)}</p>` : ''}<p><b>Layout:</b> ${i.approved ? 'APROVADO' : 'AGUARDANDO APROVAÇÃO · NÃO PRODUZIR'}</p><p><b>Andamento:</b> ${escapeHTML(i.stage)}</p>${(i.techniques || []).map((t) => `<p><b>${escapeHTML(t.type)}:</b> ${escapeHTML(t.location || 'Local não informado')} · ${escapeHTML(t.description || 'Sem detalhes')}</p>`).join('') || '<p>Sem bordado, silk ou DTF.</p>'}${i.customizations ? `<p><b>Outras personalizações:</b> ${escapeHTML(i.customizations)}</p>` : ''}${i.notes ? `<p class="preserve"><b>Produção:</b> ${escapeHTML(i.notes)}</p>` : ''}</div>${i.image ? `<figure><img src="${escapeHTML(i.image)}" alt="Layout do modelo ${index + 1}"><figcaption>Layout de referência</figcaption></figure>` : ''}</div>${true ? `<table class="prices commercial-values"><thead><tr><th>Composição do preço</th><th>Por peça</th><th>Preparação única</th></tr></thead><tbody><tr><td>Peça sem personalização</td><td>${currency(i.unitPriceCents || 0)}</td><td>—</td></tr>${(i.techniques || []).map((t) => `<tr><td>${escapeHTML(t.type)}</td><td>${currency(t.unitCents || 0)}</td><td>${currency(t.setupCents || 0)}</td></tr>`).join('')}<tr class="line-total"><td>${quantity(i)} peças × ${currency(m.unit)} + ${currency(m.setup)} preparação</td><td colspan="2">Total do modelo: ${currency(m.total)}</td></tr></tbody></table>` : ''}</section>`;
         })
         .join(
           ''
@@ -139,7 +139,14 @@ async function loadDocument() {
         if (i.tasks?.length)
           section.insertAdjacentHTML(
             'beforeend',
-            `<table><thead><tr><th>Etapa</th><th>Responsável</th><th>Prazo</th><th>Quantidade</th><th>Andamento</th></tr></thead><tbody>${i.tasks.map((t) => `<tr><td>${escapeHTML(t.sector)}</td><td>${escapeHTML((state.employees || []).find((e) => e.id === t.employeeId)?.name || 'A definir')}</td><td>${fullDate(t.due)}</td><td>${t.qty}</td><td>${escapeHTML(t.stage)}</td></tr>`).join('')}</tbody></table>`
+            `<table><thead><tr><th>Etapa</th><th>Responsável</th><th>Prazo</th><th>Quantidade</th><th>Andamento</th></tr></thead><tbody>${TrameDomain.productionTasks(
+              i
+            )
+              .map(
+                (t) =>
+                  `<tr><td>${escapeHTML(t.sector)}</td><td>${escapeHTML((state.employees || []).find((e) => e.id === t.employeeId)?.name || 'A definir')}</td><td>${fullDate(t.due)}</td><td>${t.qty}</td><td>${escapeHTML(t.stage)}</td></tr>`
+              )
+              .join('')}</tbody></table>`
           );
       });
     }

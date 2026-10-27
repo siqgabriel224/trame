@@ -16,6 +16,8 @@ Aplicação local em português, com servidor Python, SQLite e interface em HTML
 - Separar modelos por tecido, cor, grade e técnicas: bordado, silk e DTF.
 - Aprovar cada layout antes de iniciar a produção e preservar seu histórico.
 - Distribuir etapas entre funcionários e acompanhar entregas parciais.
+- Separar grades femininas e masculinas de PP a GG e registrar peças sob medida.
+- Localizar pelo número da OS e registrar a execução e assinatura por etapa.
 - Reservar materiais e registrar movimentações de estoque.
 - Controlar parcelas e recebimentos, sem processar transações bancárias.
 - Imprimir orçamento e ordem de serviço pelo navegador.
@@ -82,6 +84,7 @@ Os testes usam bancos temporários. O verificador confere também a sintaxe Java
 - [Arquitetura e regras de negócio](docs/ARQUITETURA.md)
 - [Instalação, atualização e backup](docs/OPERACAO.md)
 - [Demonstração com histórico fictício](docs/DEMONSTRACAO.md)
+- [Grades, medidas, edição e execução da OS](docs/FLUXO-DA-OS.md)
 - [Como contribuir](CONTRIBUTING.md)
 - [Cuidados com dados e segurança](SECURITY.md)
 - [Notas desta preparação](docs/ENTREGA.md)

@@ -11,6 +11,7 @@ from contextlib import closing
 from urllib.parse import urlsplit, quote
 import access
 import cnpj
+import operations
 
 
 def configuration(home):
@@ -399,6 +400,7 @@ class AuthenticatedHandler:
                                     "error": "Somente administradores alteram empresa, configurações ou funcionários."
                                 },
                             )
+                operations.sign_changes(candidate, old, user)
                 clean = self.runtime.validate(candidate, old)
                 con.execute(
                     "UPDATE state SET revision=?,payload=? WHERE id=1",

@@ -44,9 +44,15 @@ server.py ── network.py ── access.py
 
 **Histórico preservado.** Arquivamento, anulação e desativação preservam referências. O banco mantém o estado de negócio como JSON revisionado, além das tabelas de acesso. Isso simplifica a aplicação local; consultas analíticas grandes e múltiplas unidades exigiriam rever o modelo.
 
+## Execução e medidas
+
+As assinaturas de execução são registradas nas etapas, com executor, data, conta autenticada que confirmou, origem do registro e horário do servidor. As rotas de alteração exigem assinatura na nova conclusão, conferem o vínculo do funcionário conectado e preservam etapas assinadas. Administradores podem transcrever a execução conforme a OS em papel, com essa origem identificada. Conclusões antigas não recebem assinaturas presumidas. Esse registro operacional não usa certificado digital.
+
+As grades continuam armazenadas como quantidades por chave: Feminino PP–GG, Masculino PP–GG e Sob medida. O texto `measurements` acompanha as peças sob medida, com validação de quantidade e conteúdo. Chaves antigas são mantidas, evitando atribuição presumida de gênero ou alteração de entregas anteriores.
+
 ## Limites
 
-Não há emissão fiscal, transação bancária, assinatura digital ou sincronização entre computadores. O iniciador público força uso local. O suporte de rede existente no código requer configuração de certificado e administração própria; não faz parte do fluxo padrão.
+Não há emissão fiscal, transação bancária, assinatura digital com certificado ou sincronização entre computadores. O iniciador público força uso local. O suporte de rede existente no código requer configuração de certificado e administração própria; não faz parte do fluxo padrão.
 
 O servidor usa a biblioteca padrão do Python e não foi dimensionado para hospedagem pública. Testes automatizados não substituem avaliação com usuários, impressora e dados de uma operação real.
 

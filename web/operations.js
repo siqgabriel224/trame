@@ -42,9 +42,9 @@ const specFields = {
 };
 let opsSubmit = null,
   opsLookup = null,
-  queueSector = '',
+  queueSearch = '',
   queueEmployee = '',
-  queueStage = '',
+  queueStage = 'active',
   approvalFile = '',
   approvalReading = false;
 const inputField = (label, name, value = '', type = 'text', extra = '') =>
@@ -87,6 +87,7 @@ function opsForm(title, html, handler) {
   $('#opsFields').innerHTML = html;
   opsSubmit = handler;
   $('#opsForm .modal-actions .primary').hidden = !handler;
+  $('#opsForm .modal-actions .primary').textContent = 'Salvar';
   $('#opsDialog').showModal();
 }
 function openOpsOrder(id) {
@@ -118,19 +119,7 @@ function renderOperationsView() {
     content = `<button class="primary" data-action="new-client">＋ Cadastrar cliente</button><div class="ops-cards">${(state.clients || []).map((c) => `<article class="ops-card"><div class="section-heading"><h3>${esc(c.name)}</h3><span class="badge">${c.active === false ? 'Inativo' : 'Ativo'}</span></div><p>${esc(c.responsible || 'Sem responsável informado')}</p><p class="notes">${esc([c.phone, c.whatsapp, c.email].filter(Boolean).join(' · '))}</p><div class="detail-actions"><button class="secondary" data-action="edit-client" data-id="${esc(c.id)}">Editar cadastro</button><button class="secondary" data-action="client-history" data-id="${esc(c.id)}">Histórico de pedidos</button></div></article>`).join('') || '<p class="ops-empty">Cadastre um cliente para reutilizar seus contatos em pedidos e orçamentos.</p>'}</div>`;
   if (view === 'employees')
     content = `<button class="primary" data-action="new-employee">＋ Cadastrar funcionário</button><div class="ops-cards">${(state.employees || []).map((e) => `<article class="ops-card"><h3>${esc(e.name)}</h3><p>${esc(e.sector)} · ${e.active === false ? 'Inativo' : 'Ativo'}</p><button class="secondary" data-action="edit-employee" data-id="${esc(e.id)}">Editar funcionário</button></article>`).join('') || '<p class="ops-empty">Cadastre as pessoas para atribuir e concluir etapas de produção.</p>'}</div>`;
-  if (view === 'queue') {
-    const rows = state.orders
-      .filter((o) => !o.archived && o.kind !== 'quote')
-      .flatMap((o) => o.items.flatMap((i) => (i.tasks || []).map((t) => ({ o, i, t }))))
-      .filter(
-        ({ t }) =>
-          (!queueSector || t.sector === queueSector) &&
-          (!queueEmployee || t.employeeId === queueEmployee) &&
-          (!queueStage || t.stage === queueStage)
-      )
-      .sort((a, b) => a.t.due.localeCompare(b.t.due));
-    content = `<div class="ops-toolbar"><button class="primary" data-action="new-task">＋ Criar etapa</button><select id="queueSector" aria-label="Filtrar setor">${option('', 'Todos os setores', queueSector) + sectors.map((s) => option(s, s, queueSector)).join('')}</select><select id="queueEmployee" aria-label="Filtrar funcionário">${option('', 'Todos os funcionários', queueEmployee) + (state.employees || []).map((e) => option(e.id, e.name, queueEmployee)).join('')}</select><select id="queueStage" aria-label="Filtrar andamento da etapa">${option('', 'Todos os andamentos', queueStage) + ['Pendente', 'Em andamento', 'Concluído'].map((s) => option(s, s, queueStage)).join('')}</select></div><div class="ops-cards">${rows.map(({ o, i, t }) => `<article class="ops-card"><div class="section-heading"><h3>${esc(t.sector)} · ${esc(i.type)}</h3><span class="badge ${t.stage === 'Concluído' ? 'good' : t.due < today() ? 'late' : 'pending'}">${esc(t.stage)}</span></div><p>${docLabel(o)} · ${esc(o.client)} · ${t.qty} peças</p><p class="notes">${esc(state.employees.find((e) => e.id === t.employeeId)?.name || 'Sem responsável')} · prazo ${dateLabel(t.due)}${t.due < today() && t.stage !== 'Concluído' ? ' · ATRASADA' : ''}</p>${!i.approved ? '<p class="badge pending">Layout pendente · início bloqueado</p>' : ''}<div class="detail-actions"><button class="secondary" data-action="edit-task" data-id="${esc(t.id)}" data-item="${esc(i.id)}">Atualizar etapa</button><button class="secondary" data-action="open-order" data-id="${esc(o.id)}">Abrir pedido</button></div></article>`).join('') || '<p class="ops-empty">Nenhuma etapa nesta visualização. Crie etapas para os modelos de seus pedidos.</p>'}</div>`;
-  }
+  if (view === 'queue') content = productionBoard();
   if (view === 'stock')
     content = `<div class="ops-toolbar"><button class="primary" data-action="new-stock">＋ Cadastrar material</button><button class="secondary" data-action="new-reservation">＋ Reservar para pedido</button></div><div class="ops-cards">${
       (state.stock || [])
@@ -157,19 +146,120 @@ function renderOperationsView() {
   $('#opsWorkspace').innerHTML = `<div class="ops-heading"><h1>${title}</h1></div>${content}`;
   bindOperationButtons($('#opsWorkspace'));
   if (view === 'queue') {
-    for (const [id, key] of [
-      ['queueSector', 'sector'],
-      ['queueEmployee', 'employee'],
-      ['queueStage', 'stage'],
-    ])
-      $('#' + id).onchange = (e) => {
-        if (key === 'sector') queueSector = e.target.value;
-        if (key === 'employee') queueEmployee = e.target.value;
-        if (key === 'stage') queueStage = e.target.value;
-        render();
-      };
+    $('#queueSearch').oninput = (e) => {
+      queueSearch = e.target.value;
+      $('#productionOrders').innerHTML = productionOrders();
+      bindOperationButtons($('#productionOrders'));
+    };
+    $('#queueStage').onchange = (e) => {
+      queueStage = e.target.value;
+      render();
+    };
+    $('#queueEmployee').onchange = (e) => {
+      queueEmployee = e.target.value;
+      render();
+    };
   }
   return true;
+}
+function productionTaskRow(o, i, t) {
+  const employee = state.employees.find((e) => e.id === t.employeeId);
+  const signed = t.signature;
+  const blocked = o.archived || !i.approved || !employee || o.kind === 'quote';
+  return `<div class="production-step ${signed ? 'is-signed' : ''}"><div><strong>${esc(t.sector)}</strong><small>${esc(employee?.name || 'Defina o responsável')} · ${t.qty} peças · prazo ${dateLabel(t.due)}</small>${signed ? `<p class="signature-record">✓ ${esc(signed.name)} · ${dateLabel(signed.date)}<small>Registrado por ${esc(signed.recordedBy.name)} · ${esc(signed.source)}</small></p>` : t.stage === 'Concluído' ? '<small class="unsigned-warning">Concluída anteriormente · assinatura não registrada</small>' : !i.approved ? '<small>Layout pendente · início bloqueado</small>' : ''}</div><div class="step-actions"><span class="badge ${signed ? 'good' : 'pending'}">${signed ? 'Assinada' : esc(t.stage)}</span>${signed ? '' : `${t.stage !== 'Concluído' ? `<button class="secondary" data-action="edit-task" data-item="${esc(i.id)}" data-id="${esc(t.id)}" ${o.archived ? 'disabled' : ''}>${employee ? 'Editar etapa' : 'Definir responsável'}</button>${t.stage === 'Pendente' ? `<button class="secondary" data-action="start-task" data-item="${esc(i.id)}" data-id="${esc(t.id)}" ${blocked ? 'disabled' : ''}>Iniciar</button>` : ''}` : ''}<button class="primary" data-action="sign-task" data-item="${esc(i.id)}" data-id="${esc(t.id)}" ${blocked ? 'disabled' : ''}>${t.stage === 'Concluído' ? 'Registrar assinatura' : 'Concluir e assinar'}</button>`}</div></div>`;
+}
+function productionBoard() {
+  return `<p class="form-note">Abra o pedido, defina os responsáveis e registre a execução de cada etapa da OS. As etapas assinadas ficam preservadas.</p><div class="ops-toolbar"><label class="production-search">Localizar pedido<input type="search" id="queueSearch" value="${esc(queueSearch)}" placeholder="Número do pedido ou cliente"></label><label>Exibir<select id="queueStage">${option('active', 'Pedidos em aberto', queueStage)}${option('done', 'Pedidos entregues', queueStage)}${option('all', 'Todos os pedidos', queueStage)}</select></label><label>Responsável<select id="queueEmployee">${option('', 'Todos os responsáveis', queueEmployee)}${state.employees.map((e) => option(e.id, e.name, queueEmployee)).join('')}</select></label></div><div id="productionOrders" class="production-orders">${productionOrders()}</div>`;
+}
+function productionOrders() {
+  const number = TrameDomain.orderNumberQuery(queueSearch);
+  const orders = state.orders
+    .filter((o) => o.kind !== 'quote' && (number !== null || !o.archived))
+    .filter(
+      (o) => number !== null || queueStage === 'all' || (queueStage === 'done' ? done(o) : !done(o))
+    )
+    .filter((o) => TrameDomain.matchesOrder(o, queueSearch))
+    .filter(
+      (o) =>
+        !queueEmployee || o.items.some((i) => i.tasks?.some((t) => t.employeeId === queueEmployee))
+    )
+    .sort((a, b) => a.due.localeCompare(b.due));
+  return (
+    orders
+      .map((o) => {
+        const tasks = o.items.flatMap((i) => i.tasks || []),
+          signed = tasks.filter((t) => t.signature).length;
+        return `<article class="production-order"><div class="section-heading"><div><span class="eyebrow">${docLabel(o)}${o.archived ? ' · ARQUIVADO' : ''}</span><h2>${esc(o.client)}</h2><p>${esc(o.description)} · entrega ${dateLabel(o.due)}</p></div><div class="detail-actions"><button class="secondary" data-action="open-order" data-id="${esc(o.id)}">Abrir OS</button><button class="secondary" data-action="edit-order" data-id="${esc(o.id)}" ${o.archived ? 'disabled' : ''}>Editar pedido</button><a class="secondary" target="_blank" rel="noopener" href="/print?id=${encodeURIComponent(o.id)}&type=os">Imprimir OS</a></div></div><p class="hint">${tasks.length ? `${signed} de ${tasks.length} etapas assinadas` : 'Etapas ainda não preparadas'}</p><details class="production-steps" ${number !== null || orders.length === 1 ? 'open' : ''}><summary>Ver etapas e responsáveis · ${signed}/${tasks.length} assinadas</summary>${o.items
+          .map(
+            (i, index) =>
+              `<section class="production-model"><h3>Modelo ${index + 1} · ${esc(i.type)} · ${total(i)} peças</h3>${
+                TrameDomain.productionTasks(i)
+                  .map((t) => productionTaskRow(o, i, t))
+                  .join('') || '<p class="hint">Prepare as etapas para acompanhar este modelo.</p>'
+              }<button class="secondary" data-action="new-task" data-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>＋ Etapa complementar</button></section>`
+          )
+          .join(
+            ''
+          )}<button class="secondary" data-action="prepare-production" data-id="${esc(o.id)}" ${o.archived || !o.items.length || done(o) ? 'disabled' : ''}>Preparar etapas da OS</button><p class="hint">Inclui separação, corte, costura, técnicas do modelo, acabamento, revisão e expedição. Etapas existentes são mantidas.</p></details></article>`;
+      })
+      .join('') ||
+    '<p class="ops-empty">Nenhum pedido encontrado. Busque pelo número ou altere o filtro de situação.</p>'
+  );
+}
+async function prepareProduction(orderId) {
+  const n = clone(),
+    o = n.orders.find((o) => o.id === orderId);
+  let added = false;
+  for (const i of o.items) {
+    i.tasks ||= [];
+    for (const sector of TrameDomain.productionSectors(i)) {
+      if (i.tasks.some((t) => t.sector === sector)) continue;
+      added = true;
+      i.tasks.push({
+        id: uid(),
+        sector,
+        employeeId: '',
+        due: o.due,
+        qty: total(i),
+        stage: 'Pendente',
+        notes: '',
+      });
+    }
+  }
+  if (!added) return toast('As etapas da OS já estão preparadas.');
+  if (await save(n)) toast('Etapas da OS preparadas. Defina os responsáveis para começar.');
+}
+function signTask(itemId, taskId) {
+  const { o, i } = findItem(itemId),
+    task = i.tasks.find((t) => t.id === taskId);
+  const employee = state.employees.find((e) => e.id === task.employeeId);
+  if (!employee || !i.approved || o.archived)
+    return toast('Defina o responsável e aprove o layout antes de registrar a execução.', true);
+  const user = TrameAccess.session.user;
+  if (user.role !== 'admin' && user.employeeId !== employee.id)
+    return toast(
+      'Entre com o acesso do responsável pela etapa ou peça ao administrador para registrar a OS assinada.',
+      true
+    );
+  opsForm(
+    `Assinar etapa · ${docLabel(o)}`,
+    `<p class="form-note">${esc(o.client)} · ${esc(i.type)} · <b>${esc(task.sector)}</b> · ${task.qty} peças</p><p>${user.role === 'admin' ? 'Registre o nome e a data conforme a etapa assinada pelo responsável na OS.' : 'Confirme a execução desta etapa com seu nome.'}</p><div class="form-grid">${inputField('Responsável pela execução', 'executor', employee.name, 'text', 'readonly')}${inputField('Data da execução', 'date', task.completedAt || today(), 'date', `required max="${today()}"`)}${inputField('Digite o nome do responsável para confirmar', 'signatureName', '', 'text', 'required maxlength="200" autocomplete="off"')}<label class="check full"><input type="checkbox" name="confirmed" required> Confirmo que esta etapa foi executada pelo responsável informado.</label></div><p class="hint">O registro guardará também a conta ${esc(user.name)} e o horário. Depois de assinada, a etapa não poderá ser sobrescrita.</p>`,
+    async (f) => {
+      const n = clone(),
+        { i } = findItem(itemId, n),
+        t = i.tasks.find((t) => t.id === taskId);
+      t.stage = 'Concluído';
+      t.signature = {
+        name: f.elements.signatureName.value.trim(),
+        date: f.elements.date.value,
+        confirmed: f.elements.confirmed.checked,
+      };
+      if (i.stage === 'Aguardando') i.stage = 'Em produção';
+      if (i.stage !== 'Entregue' && i.tasks.every((t) => t.signature)) i.stage = 'Pronto';
+      return save(n);
+    }
+  );
+  $('#opsForm .modal-actions .primary').textContent = 'Concluir e registrar assinatura';
 }
 function openClient(id = null) {
   const c = state.clients.find((c) => c.id === id) || {},
@@ -303,6 +393,12 @@ function openTask(itemId = null, taskId = null) {
     toast('Adicione um modelo a um pedido antes de criar etapas.', true);
     return;
   }
+  if (t.signature)
+    return toast(
+      'Esta etapa já foi assinada. Cadastre uma etapa complementar, se necessário.',
+      true
+    );
+  if (t.stage === 'Concluído') return signTask(itemId, taskId);
   opsForm(
     taskId ? 'Atualizar etapa' : 'Criar etapa',
     `<div class="form-grid">${selectField('Modelo do pedido', 'itemId', itemOptions(itemId))}${selectField('Setor', 'sector', sectors.map((s) => option(s, s, t.sector)).join(''))}${selectField(
@@ -313,7 +409,7 @@ function openTask(itemId = null, taskId = null) {
           .filter((e) => e.active !== false || e.id === t.employeeId)
           .map((e) => option(e.id, e.name, t.employeeId))
           .join('')
-    )}${inputField('Prazo da etapa', 'due', t.due || ref?.o.due || today(), 'date', 'required')}${inputField('Quantidade de peças', 'qty', t.qty || (ref && total(ref.i)) || 1, 'number', 'required min="1" step="1"')}${selectField('Andamento da etapa', 'stage', ['Pendente', 'Em andamento', 'Concluído'].map((s) => option(s, s, t.stage || 'Pendente')).join(''))}${textField('Instruções / observações', 'notes', t.notes || '')}</div><p class="form-note">Iniciar ou concluir exige funcionário e layout aprovado. A etapa acompanha o trabalho do setor; a entrega é registrada por tamanho.</p>`,
+    )}${inputField('Prazo da etapa', 'due', t.due || ref?.o.due || today(), 'date', 'required')}${inputField('Quantidade de peças', 'qty', t.qty || (ref && total(ref.i)) || 1, 'number', 'required min="1" step="1"')}${selectField('Andamento da etapa', 'stage', ['Pendente', 'Em andamento'].map((s) => option(s, s, t.stage || 'Pendente')).join(''))}${textField('Instruções / observações', 'notes', t.notes || '')}</div><p class="form-note">Defina quem executará esta etapa. Depois, use Concluir e assinar para registrar o trabalho realizado. O início exige layout aprovado.</p>`,
     async (f) => {
       const n = clone(),
         ref = findItem(f.elements.itemId.value, n);
@@ -328,7 +424,7 @@ function openTask(itemId = null, taskId = null) {
       task.qty = Number(f.elements.qty.value);
       task.stage = f.elements.stage.value;
       task.notes = f.elements.notes.value.trim();
-      task.completedAt = task.stage === 'Concluído' ? today() : '';
+      task.completedAt = '';
       if (task.stage !== 'Pendente' && ref.i.stage === 'Aguardando') ref.i.stage = 'Em produção';
       return save(n);
     }
@@ -654,7 +750,11 @@ function detailOperations(o) {
         count = Object.values(delivered).reduce((s, n) => s + n, 0);
       return `<article class="ops-item"><h3>${esc(i.type)} · operação</h3>${technicalMarkup(i)}<div class="section-heading"><h4>Layout · versão ${i.layoutVersion || 1}</h4><span class="badge ${i.approved ? 'good' : 'pending'}">${i.approved ? 'Aprovado' : 'Pendente'}</span></div>${i.approvalEvidence?.name ? `<p class="notes">${esc(i.approvalEvidence.name)} · ${dateLabel(i.approvalEvidence.date)} · ${esc(i.approvalEvidence.channel)}<br>${esc(i.approvalEvidence.note || '')}</p>${i.approvalEvidence.attachment ? `<button class="secondary" data-action="current-evidence" data-id="${esc(i.id)}">Ver comprovante</button>` : ''}` : '<p class="hint">Aprovações antigas podem não ter comprovante registrado.</p>'}${(i.layoutHistory || []).map((h) => `<div class="ops-inline"><span>Versão ${h.version} · ${h.approved ? 'aprovada' : 'pendente'} · ${esc(h.evidence?.name || 'Sem aprovador registrado')}</span>${h.image ? `<button class="secondary" data-action="old-layout" data-id="${esc(i.id)}" data-item="${esc(h.id)}">Ver layout anterior</button>` : '<small>Versão sem imagem</small>'}${h.evidence?.attachment ? `<button class="secondary" data-action="old-evidence" data-id="${esc(i.id)}" data-item="${esc(h.id)}">Ver comprovante</button>` : ''}</div>`).join('') || '<p class="hint">Nenhuma substituição de layout registrada nesta versão do Tramê.</p>'}${
         o.kind !== 'quote'
-          ? `<div class="detail-actions"><button class="secondary" data-action="new-task" data-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>＋ Etapa de produção</button><button class="secondary" data-action="new-reservation" data-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>＋ Reservar material</button><button class="primary" data-action="new-delivery" data-item="${esc(i.id)}" ${o.archived || count >= total(i) ? 'disabled' : ''}>Registrar entrega</button></div><h4>Etapas</h4>${(i.tasks || []).map((t) => `<div class="ops-inline"><div><strong>${esc(t.sector)} · ${esc(t.stage)}</strong><small>${esc(state.employees.find((e) => e.id === t.employeeId)?.name || 'Sem funcionário')} · ${t.qty} peças · ${dateLabel(t.due)}</small></div><button class="secondary" data-action="edit-task" data-id="${esc(t.id)}" data-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>Atualizar</button></div>`).join('') || '<p class="hint">Sem etapas cadastradas.</p>'}<h4>Entrega por tamanho · ${count}/${total(i)} peças</h4><p class="notes">${Object.entries(
+          ? `<div class="detail-actions"><button class="secondary" data-action="new-task" data-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>＋ Etapa de produção</button><button class="secondary" data-action="new-reservation" data-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>＋ Reservar material</button><button class="primary" data-action="new-delivery" data-item="${esc(i.id)}" ${o.archived || count >= total(i) ? 'disabled' : ''}>Registrar entrega</button></div><h4>Etapas</h4>${
+              TrameDomain.productionTasks(i)
+                .map((t) => productionTaskRow(o, i, t))
+                .join('') || '<p class="hint">Prepare as etapas da OS na aba Produção.</p>'
+            }<h4>Entrega por tamanho · ${count}/${total(i)} peças</h4><p class="notes">${Object.entries(
               i.sizes
             )
               .filter(([, n]) => n)
@@ -690,10 +790,12 @@ function arrangeOrderOperations(o, expanded = []) {
     const details = document.createElement('details');
     details.className = 'item-operations';
     details.dataset.itemId = o.items[index].id;
-    details.open = expanded.includes(o.items[index].id);
+    details.open = expanded.includes(o.items[index].id) || (o.kind !== 'quote' && !done(o));
     const summary = document.createElement('summary');
     summary.textContent =
-      o.kind === 'quote' ? 'Ficha técnica e histórico do layout' : 'Produção, entregas e histórico';
+      o.kind === 'quote'
+        ? 'Ficha técnica e histórico do layout'
+        : 'Etapas e assinaturas da OS · entregas e histórico';
     details.append(summary, panel);
     cards[index]?.append(details);
   });
@@ -715,7 +817,17 @@ function bindOperationButtons(scope) {
           if (a === 'edit-employee') openEmployee(id);
           if (a === 'new-task') openTask(item);
           if (a === 'edit-task') openTask(item, id);
+          if (a === 'sign-task') signTask(item, id);
+          if (a === 'prepare-production') await prepareProduction(id);
+          if (a === 'start-task') {
+            const n = clone(),
+              { i } = findItem(item, n);
+            i.tasks.find((t) => t.id === id).stage = 'Em andamento';
+            if (i.stage === 'Aguardando') i.stage = 'Em produção';
+            await save(n);
+          }
           if (a === 'open-order') openOpsOrder(id);
+          if (a === 'edit-order') openOrder(id);
           if (a === 'new-stock') openStock();
           if (a === 'edit-stock') openStock(id);
           if (a === 'stock-move') stockMove(id);

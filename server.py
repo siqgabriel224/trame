@@ -258,6 +258,19 @@ def validate(data, old):
                 (t.get("description", "") for t in techniques if t["type"] == "Bordado"), ""
             )
             sizes = item.get("sizes")
+            text_fields(item, ["measurements"])
+            if type(item.get("madeToMeasure", False)) is not bool:
+                raise ValueError("Opção sob medida inválida.")
+            if item.get("madeToMeasure") or (
+                isinstance(sizes, dict) and sizes.get("Sob medida", 0)
+            ):
+                if (
+                    not item.get("measurements", "").strip()
+                    or not isinstance(sizes, dict)
+                    or type(sizes.get("Sob medida")) is not int
+                    or sizes["Sob medida"] < 1
+                ):
+                    raise ValueError("Informe as medidas e a quantidade de peças sob medida.")
             if (
                 not isinstance(sizes, dict)
                 or not sizes

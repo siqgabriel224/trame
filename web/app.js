@@ -60,7 +60,10 @@ async function save(next) {
   try {
     await TrameAccess.refreshSession();
     const changes = TrameAccess.changes(state, next);
-    if (!changes.length) return true;
+    if (!changes.length) {
+      $('#saveState').textContent = '● Dados atualizados';
+      return true;
+    }
     const d = await TrameAccess.request('/api/changes', { changes });
     state = d;
     render();
@@ -109,14 +112,14 @@ function orderRow(order) {
   return `<tr>
     <td><div class="client">
       <div class="avatar">${esc(initials)}</div>
-      <div><strong>${esc(order.client)}</strong><small>${docLabel(order)} · ${esc(order.description)}</small></div>
+      <div><strong>${docLabel(order)} · ${esc(order.client)}</strong><small>${esc(order.description)}</small></div>
     </div></td>
     <td>${quantity}<span class="date-small">${order.items.length} modelo${order.items.length === 1 ? '' : 's'}</span></td>
     <td>${dateLabel(order.due)} ${new Date(order.due + 'T12:00:00').getFullYear()}<div>${dueBadge(order)}</div></td>
     <td>${approval}</td>
     <td>${brl(values.total)}<div><span class="badge ${paymentClass}">${order.kind === 'quote' ? 'Orçamento' : values.status}</span></div></td>
     <td><span class="badge ${done(order) ? 'good' : ''}">${stage(order)}</span></td>
-    <td><button class="open-btn" data-open="${esc(order.id)}" aria-label="Abrir pedido de ${esc(order.client)}">↗</button></td>
+    <td><div class="order-row-actions"><button class="secondary" data-edit-order="${esc(order.id)}" ${order.archived ? 'disabled' : ''}>Editar</button><button class="open-btn" data-open="${esc(order.id)}" aria-label="Abrir ${docLabel(order)} de ${esc(order.client)}">↗</button></div></td>
   </tr>`;
 }
 
@@ -160,9 +163,11 @@ function render() {
     .join('');
   $('#sideCount').textContent = active.length;
   $('#warningDays').value = state.warningDays;
-  const q = $('#search').value.toLocaleLowerCase('pt-BR');
+  const q = $('#search').value.trim();
+  const searchedNumber = TrameDomain.orderNumberQuery(q);
   const orders = state.orders
     .filter((o) => {
+      if (searchedNumber !== null) return (view === 'quotes') === (o.kind === 'quote');
       if (view === 'quotes' && filter === 'converted')
         return !o.archived && o.kind === 'order' && !!o.quoteNumber;
       if ((view === 'quotes') !== (o.kind === 'quote')) return false;
@@ -175,13 +180,10 @@ function render() {
       if (filter === 'urgent') return daysLeft(o) <= state.warningDays;
       return true;
     })
-    .filter((o) =>
-      `${o.client} ${o.description} ${o.responsible || ''} ${o.seller || ''} ${o.osNumber || ''} ${o.quoteNumber || ''}`
-        .toLocaleLowerCase('pt-BR')
-        .includes(q)
-    )
+    .filter((o) => TrameDomain.matchesOrder(o, q))
     .filter(
       (o) =>
+        searchedNumber !== null ||
         view === 'quotes' ||
         $('#paymentFilter').value === 'all' ||
         financial(o).status === $('#paymentFilter').value
@@ -199,6 +201,7 @@ function render() {
       <thead><tr><th>Cliente / Pedido</th><th>Peças</th><th>Prazo de entrega</th><th>Layout</th><th>Valor / pagamento</th><th>Andamento</th><th></th></tr></thead>
       <tbody>${orders.map(orderRow).join('')}</tbody>
     </table></div>`;
+  $$('[data-edit-order]').forEach((b) => (b.onclick = () => openOrder(b.dataset.editOrder)));
   $$('[data-open]').forEach((b) => (b.onclick = () => openDetail(b.dataset.open)));
 }
 function openOrder(id = null) {
@@ -223,6 +226,7 @@ function openOrder(id = null) {
     : view === 'quotes'
       ? 'Novo orçamento'
       : 'Novo pedido';
+  if (id) $('#orderTitle').textContent += ' · ' + docLabel(o);
   $('#orderDialog').showModal();
 }
 $('#orderForm').onsubmit = async (e) => {
@@ -283,7 +287,7 @@ function renderDetail() {
                   .map(([s, n]) => `${esc(s)}: ${n}`)
                   .join(
                     ' · '
-                  )}</p>${techniqueDescription(i)}<p><b>Preço:</b> ${brl(itemFinancial(i).unit)} / peça · <b>Total:</b> ${brl(itemFinancial(i).total)}</p>${i.customizations ? `<p><b>Personalizações:</b> ${esc(i.customizations)}</p>` : ''}${i.notes ? `<p class="notes">${esc(i.notes)}</p>` : ''}</div></div><div class="item-controls"><button class="${i.approved ? 'secondary' : 'primary'}" data-approve="${esc(i.id)}" ${o.archived || i.stage !== 'Aguardando' ? 'disabled' : ''}>${i.approved ? 'Retirar aprovação' : 'Confirmar aprovação'}</button><select data-stage="${esc(i.id)}" aria-label="Andamento de ${esc(i.type)}" ${o.archived ? 'disabled' : ''}>${['Aguardando', 'Em produção', 'Pronto', 'Entregue'].map((s) => `<option ${i.stage === s ? 'selected' : ''} ${s === 'Entregue' || (s !== 'Aguardando' && (!i.approved || o.kind === 'quote')) ? 'disabled' : ''}>${s}</option>`).join('')}</select><button class="secondary" data-edit-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>Editar modelo</button></div></article>`
+                  )}</p>${i.madeToMeasure || i.sizes['Sob medida'] ? `<p class="preserve"><b>Sob medida:</b> ${esc(i.measurements)}</p>` : ''}${techniqueDescription(i)}<p><b>Preço:</b> ${brl(itemFinancial(i).unit)} / peça · <b>Total:</b> ${brl(itemFinancial(i).total)}</p>${i.customizations ? `<p><b>Personalizações:</b> ${esc(i.customizations)}</p>` : ''}${i.notes ? `<p class="notes">${esc(i.notes)}</p>` : ''}</div></div><div class="item-controls"><button class="${i.approved ? 'secondary' : 'primary'}" data-approve="${esc(i.id)}" ${o.archived || i.stage !== 'Aguardando' ? 'disabled' : ''}>${i.approved ? 'Retirar aprovação' : 'Confirmar aprovação'}</button><select data-stage="${esc(i.id)}" aria-label="Andamento de ${esc(i.type)}" ${o.archived ? 'disabled' : ''}>${['Aguardando', 'Em produção', 'Pronto', 'Entregue'].map((s) => `<option ${i.stage === s ? 'selected' : ''} ${s === 'Entregue' || (s === 'Pronto' && i.stage !== 'Pronto' && !(i.tasks?.length && i.tasks.every((t) => t.signature))) || (s !== 'Aguardando' && (!i.approved || o.kind === 'quote')) ? 'disabled' : ''}>${s}</option>`).join('')}</select><button class="secondary" data-edit-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>Editar modelo</button></div></article>`
             )
             .join('')
         : '<div class="empty"><p>Adicione o primeiro modelo, com tecido, cor e grade de tamanhos.</p></div>'
@@ -341,11 +345,15 @@ function renderDetail() {
   );
   $('#detailDialog').scrollTop = detailScroll;
 }
-function addSizeField(name, value = 0) {
-  if ($$('#sizes input').some((x) => x.dataset.size.toLowerCase() === name.toLowerCase()))
+function addSizeField(name, value = 0, container = $('#otherSizes'), labelText = name) {
+  if (
+    $$('#sizes input, #bespokeSizes input').some(
+      (x) => x.dataset.size.toLowerCase() === name.toLowerCase()
+    )
+  )
     return toast('Este tamanho já está na grade.', true);
   const label = document.createElement('label');
-  label.textContent = name;
+  label.textContent = labelText;
   const input = document.createElement('input');
   input.type = 'number';
   input.min = 0;
@@ -356,12 +364,15 @@ function addSizeField(name, value = 0) {
   input.setAttribute('aria-label', `Quantidade ${name}`);
   input.oninput = updateTotal;
   label.append(input);
-  $('#sizes').append(label);
+  container.append(label);
 }
 function updateTotal() {
   updatePricePreview();
   $('#sizeTotal').textContent =
-    $$('#sizes input').reduce((n, i) => n + Number(i.value || 0), 0) + ' peças';
+    $$('#sizes input:not(:disabled), #bespokeSizes input:not(:disabled)').reduce(
+      (n, i) => n + Number(i.value || 0),
+      0
+    ) + ' peças';
 }
 function imagePreview() {
   $('#imageEditor').innerHTML = itemImage
@@ -375,9 +386,31 @@ function openItem(id = null) {
   const f = $('#itemForm');
   f.reset();
   $('#customSize').value = '';
+  $('#bespokeSizes')?.remove();
   $('#sizes').innerHTML = '';
-  const sizes = i?.sizes || { PP: 0, P: 0, M: 0, G: 0, GG: 0, XGG: 0 };
-  Object.entries(sizes).forEach(([s, n]) => addSizeField(s, n));
+  const sizes = i?.sizes || {};
+  for (const group of TrameDomain.sizeGroups(sizes)) {
+    const section = document.createElement('section');
+    section.className = 'size-group';
+    section.innerHTML = `<h3>${esc(group.label)}</h3><div class="sizes"></div>`;
+    $('#sizes').append(section);
+    for (const [size, count] of group.rows)
+      addSizeField(
+        size,
+        count,
+        section.querySelector('.sizes'),
+        size.replace(group.label + ' ', '')
+      );
+  }
+  $('#sizes').insertAdjacentHTML(
+    'beforeend',
+    '<div id="otherSizes" class="sizes"></div><div id="bespokeSizes" class="sizes size-group"></div>'
+  );
+  addSizeField('Sob medida', sizes['Sob medida'] || 0, $('#bespokeSizes'), 'Quantidade sob medida');
+  $('#measurementsArea').prepend($('#bespokeSizes'));
+  $('#madeToMeasure').checked = !!i?.madeToMeasure || !!sizes['Sob medida'];
+  f.elements.measurements.value = i?.measurements || '';
+  toggleMeasurements();
   ['type', 'description', 'fabric', 'color', 'customizations', 'notes'].forEach(
     (k) => (f.elements[k].value = i?.[k] || (k === 'type' ? 'Camiseta' : ''))
   );
@@ -390,6 +423,15 @@ function openItem(id = null) {
   updateTotal();
   $('#itemDialog').showModal();
 }
+function toggleMeasurements() {
+  const enabled = $('#madeToMeasure').checked;
+  $('#measurementsArea').hidden = !enabled;
+  $('#bespokeSizes').hidden = !enabled;
+  $('#bespokeSizes input').disabled = !enabled;
+  $('#itemForm').elements.measurements.required = enabled;
+  updateTotal();
+}
+$('#madeToMeasure').onchange = toggleMeasurements;
 $('#addSize').onclick = () => {
   const s = $('#customSize').value.trim();
   if (s) {
@@ -444,10 +486,18 @@ $('#itemForm').onsubmit = async (e) => {
     toast(err.message, true);
     return;
   }
+  i.madeToMeasure = $('#madeToMeasure').checked;
+  i.measurements = f.elements.measurements.value.trim();
+  if (i.madeToMeasure && (!i.measurements || Number($('#bespokeSizes input').value) < 1))
+    return toast('Informe as medidas e a quantidade de peças sob medida.', true);
   i.image = itemImage;
   i.sizes = Object.fromEntries(
-    $$('#sizes input').map((x) => [x.dataset.size, Number(x.value || 0)])
+    $$('#sizes input:not(:disabled), #bespokeSizes input:not(:disabled)').map((x) => [
+      x.dataset.size,
+      Number(x.value || 0),
+    ])
   );
+  if (!i.madeToMeasure && Object.hasOwn(i.sizes, 'Sob medida')) i.sizes['Sob medida'] = 0;
   if (total(i) < 1) return toast('Informe pelo menos uma peça na grade.', true);
   if (await save(n)) {
     $('#itemDialog').close();

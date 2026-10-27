@@ -19,6 +19,103 @@ SECTORS = [
 TASK_STAGES = ["Pendente", "Em andamento", "Concluído"]
 
 
+def sign_changes(data, old, user):
+    """Registra o executor declarado e a conta que confirmou a execução."""
+
+    def normalize_name(value):
+        return " ".join(str(value).split()).casefold()
+
+    employees = {e["id"]: e for e in data.get("employees", [])}
+    previous = {
+        (o["id"], i["id"], t["id"]): t
+        for o in old["orders"]
+        for i in o["items"]
+        for t in i.get("tasks", [])
+    }
+    for order in data["orders"]:
+        for item in order["items"]:
+            for task in item.get("tasks", []):
+                prior = previous.get((order["id"], item["id"], task["id"]), {})
+                signature = task.get("signature")
+                if prior.get("signature"):
+                    if any(
+                        task.get(k) != prior.get(k)
+                        for k in (
+                            "signature",
+                            "sector",
+                            "employeeId",
+                            "qty",
+                            "stage",
+                            "completedAt",
+                        )
+                    ):
+                        raise ValueError(
+                            "A etapa assinada é preservada. Cadastre outra etapa para complemento ou correção."
+                        )
+                    continue
+                if (
+                    task.get("stage") == "Concluído"
+                    and prior.get("stage") != "Concluído"
+                    and not signature
+                ):
+                    raise ValueError("Conclua a etapa registrando a assinatura do responsável.")
+                if not signature:
+                    continue
+                if (
+                    order.get("archived")
+                    or order.get("kind") == "quote"
+                    or not item.get("approved")
+                ):
+                    raise ValueError("Assine somente etapas de uma OS ativa com layout aprovado.")
+                if not isinstance(signature, dict) or signature.get("confirmed") is not True:
+                    raise ValueError("Confirme a execução antes de assinar a etapa.")
+                employee = employees.get(task.get("employeeId"))
+                if not employee or employee.get("active", True) is False:
+                    raise ValueError("Selecione um funcionário ativo para assinar a etapa.")
+                if user["role"] != "admin" and user["employee_id"] != employee["id"]:
+                    raise ValueError(
+                        "Esta etapa deve ser assinada pelo responsável conectado ou registrada pelo administrador a partir da OS."
+                    )
+                if normalize_name(signature.get("name", "")) != normalize_name(employee["name"]):
+                    raise ValueError(
+                        "Digite o nome do funcionário responsável para confirmar a assinatura."
+                    )
+                signed_date = date.fromisoformat(signature.get("date", ""))
+                if signed_date > date.today():
+                    raise ValueError("A data da execução não pode estar no futuro.")
+                if task.get("stage") != "Concluído":
+                    raise ValueError("A assinatura exige etapa concluída.")
+                task["completedAt"] = signed_date.isoformat()
+                task["signature"] = {
+                    "name": employee["name"],
+                    "employeeId": employee["id"],
+                    "date": signed_date.isoformat(),
+                    "recordedBy": {"id": user["id"], "name": user["name"]},
+                    "recordedAt": datetime.now(timezone.utc).isoformat(),
+                    "source": "Registro da OS pelo administrador"
+                    if user["role"] == "admin"
+                    else "Responsável conectado",
+                }
+            prior_item = next(
+                (
+                    i
+                    for o in old["orders"]
+                    if o["id"] == order["id"]
+                    for i in o["items"]
+                    if i["id"] == item["id"]
+                ),
+                {},
+            )
+            if item.get("stage") in ("Pronto", "Entregue") and prior_item.get("stage") not in (
+                "Pronto",
+                "Entregue",
+            ):
+                if not item.get("tasks") or any(not t.get("signature") for t in item["tasks"]):
+                    raise ValueError(
+                        "Conclua e assine as etapas da OS antes de marcar o modelo como pronto."
+                    )
+
+
 def normalize(data):
     for key in ["clients", "employees", "stock", "reservations"]:
         data.setdefault(key, [])
