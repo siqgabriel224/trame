@@ -108,4 +108,6 @@ A mesma consulta está disponível ao [cadastrar ou editar clientes](docs/imagen
 
 Projeto de Gabriel, desenvolvido a partir de sua experiência na confecção. O módulo de QR Code possui licença MIT e créditos preservados em [vendor](vendor/LEIA-ME.md).
 
+Ferramentas de IA foram usadas como apoio à implementação e à revisão do código.
+
 O código do Tramê é disponibilizado para consulta e avaliação de portfólio. Ainda não foi definida uma licença geral de redistribuição ou uso comercial. Consulte os [avisos de terceiros](AVISOS-DE-TERCEIROS.txt) antes de redistribuir dependências.
