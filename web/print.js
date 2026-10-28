@@ -30,7 +30,7 @@ function signatureRows(o) {
 }
 async function loadDocument() {
   try {
-    const response = await fetch('/api/state');
+    const response = await fetch('/api/state', { headers: { 'X-Trame-Layouts': 'links' } });
     if (response.status === 401) {
       location.replace('/login?next=' + encodeURIComponent(location.pathname + location.search));
       return;

@@ -38,3 +38,9 @@ tmp*/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Configuração local de assistentes
+.claude/
+.claude-flow/
+.codex/
+.swarm/

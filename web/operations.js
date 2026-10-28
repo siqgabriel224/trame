@@ -1,4 +1,5 @@
 'use strict';
+let stockCategory = 'Material';
 const sectors = [
   'Separação',
   'Corte',
@@ -86,6 +87,10 @@ function opsForm(title, html, handler) {
   opsLookup = null;
   $('#opsTitle').textContent = title;
   $('#opsFields').innerHTML = html;
+  $('#opsDialog').classList.toggle(
+    'supply-dialog',
+    !!$('#opsFields').querySelector('.supply-editor')
+  );
   opsSubmit = handler;
   $('#opsForm .modal-actions .primary').hidden = !handler;
   $('#opsForm .modal-actions .primary').textContent = 'Salvar';
@@ -123,18 +128,19 @@ function renderOperationsView() {
   if (view === 'clients')
     content = `<div class="ops-toolbar"><button class="primary" data-action="new-client">＋ Cadastrar cliente</button><label class="client-search">Pesquisar por nome ou CNPJ<input id="clientSearch" type="search" placeholder="Nome, nome fantasia ou CNPJ" value="${esc(clientSearch)}"></label></div><div id="clientCards" class="ops-cards">${clientCards()}</div>`;
   if (view === 'employees')
-    content = `<button class="primary" data-action="new-employee">＋ Cadastrar funcionário</button><div class="ops-cards">${(state.employees || []).map((e) => `<article class="ops-card"><h3>${esc(e.name)}</h3><p>${esc(e.sector)} · ${e.active === false ? 'Inativo' : 'Ativo'}</p><button class="secondary" data-action="edit-employee" data-id="${esc(e.id)}">Editar funcionário</button></article>`).join('') || '<p class="ops-empty">Cadastre as pessoas para atribuir e concluir etapas de produção.</p>'}</div>`;
+    content = `<button class="primary" data-action="new-employee">＋ Cadastrar funcionário</button><div class="ops-cards">${(state.employees || []).map((e) => `<article class="ops-card"><h3>${esc(e.name)}</h3><p>${esc(e.sector)} · ${e.active === false ? 'Inativo' : 'Ativo'}</p><button class="secondary" data-action="edit-employee" data-id="${esc(e.id)}">Editar funcionário</button><button class="secondary" data-delete-scope="employees" data-delete-id="${esc(e.id)}" data-delete-name="${esc(e.name)}">Excluir</button></article>`).join('') || '<p class="ops-empty">Cadastre as pessoas para atribuir e concluir etapas de produção.</p>'}</div>`;
   if (view === 'queue') content = productionBoard();
   if (view === 'stock')
-    content = `<div class="ops-toolbar"><button class="primary" data-action="new-stock">＋ Cadastrar material</button><button class="secondary" data-action="new-reservation">＋ Reservar para pedido</button></div><div class="ops-cards">${
+    content = `<div class="tabs" role="group" aria-label="Categoria de estoque"><button type="button" data-stock-category="Material" class="${stockCategory === 'Material' ? 'selected' : ''}">Materiais</button><button type="button" data-stock-category="Produto pronto" class="${stockCategory === 'Produto pronto' ? 'selected' : ''}">Produtos prontos</button></div><div class="ops-toolbar"><button class="primary" data-action="new-stock">＋ Cadastrar ${stockCategory === 'Produto pronto' ? 'produto pronto' : 'material'}</button><button class="secondary" data-action="new-reservation">＋ Reservar para pedido</button></div><div class="ops-cards">${
       (state.stock || [])
+        .filter((s) => (s.category || 'Material') === stockCategory)
         .map((s) => {
           const v = stockValues(s);
-          return `<article class="ops-card"><div class="section-heading"><h3>${esc(s.name)}</h3><span class="badge ${v.available < (s.minimumMilli || 0) ? 'late' : 'good'}">${s.active === false ? 'Inativo' : v.available < (s.minimumMilli || 0) ? 'Abaixo do mínimo' : 'Disponível'}</span></div><div class="stock-numbers"><div><small>Físico</small><b>${formatQuantity(v.onHand)} ${esc(s.unit)}</b></div><div><small>Reservado</small><b>${formatQuantity(v.reserved)}</b></div><div><small>Livre</small><b>${formatQuantity(v.available)}</b></div></div><div class="detail-actions"><button class="secondary" data-action="stock-move" data-id="${esc(s.id)}">Entrada / saída</button><button class="secondary" data-action="edit-stock" data-id="${esc(s.id)}">Editar material</button><button class="secondary" data-action="stock-history" data-id="${esc(s.id)}">Histórico</button></div></article>`;
+          return `<article class="ops-card"><div class="section-heading"><h3>${esc(s.name)}</h3>${s.category === 'Produto pronto' ? `<p class="notes">${[s.productType, s.size && 'Tamanho ' + s.size, s.color, s.sku && 'Código ' + s.sku].filter(Boolean).map(esc).join(' · ')}</p>` : ''}<span class="badge ${v.available < (s.minimumMilli || 0) ? 'late' : 'good'}">${s.active === false ? 'Inativo' : v.available < (s.minimumMilli || 0) ? 'Abaixo do mínimo' : 'Disponível'}</span></div><div class="stock-numbers"><div><small>Físico</small><b>${formatQuantity(v.onHand)} ${esc(s.unit)}</b></div><div><small>Reservado</small><b>${formatQuantity(v.reserved)}</b></div><div><small>Livre</small><b>${formatQuantity(v.available)}</b></div></div><div class="detail-actions"><button class="secondary" data-action="stock-move" data-id="${esc(s.id)}">Entrada / saída</button><button class="secondary" data-action="edit-stock" data-id="${esc(s.id)}">Editar ${s.category === 'Produto pronto' ? 'produto' : 'material'}</button><button class="secondary" data-action="stock-history" data-id="${esc(s.id)}">Histórico</button><button class="secondary" data-delete-scope="stock" data-delete-id="${esc(s.id)}" data-delete-name="${esc(s.name)}">Excluir</button></div></article>`;
         })
         .join('') ||
-      '<p class="ops-empty">Cadastre materiais com unidade, saldo inicial e estoque mínimo.</p>'
-    }</div><h2 class="ops-subtitle">Reservas dos pedidos</h2>${reservationMarkup((state.reservations || []).filter((r) => r.stage === 'Reservado'))}`;
+      `<p class="ops-empty">${stockCategory === 'Produto pronto' ? 'Cadastre produtos prontos, como uniformes e jalecos. Use um cadastro para cada combinação de tamanho e cor.' : 'Cadastre materiais com unidade, saldo inicial e estoque mínimo.'}</p>`
+    }</div><h2 class="ops-subtitle">Reservas dos pedidos</h2>${reservationMarkup((state.reservations || []).filter((r) => r.stage === 'Reservado' && (state.stock.find((s) => s.id === r.stockId)?.category || 'Material') === stockCategory))}`;
   if (view === 'billing') {
     const rows = state.orders
       .filter((o) => o.kind !== 'quote' && !o.archived)
@@ -150,6 +156,12 @@ function renderOperationsView() {
   }
   $('#opsWorkspace').innerHTML = `<div class="ops-heading"><h1>${title}</h1></div>${content}`;
   bindOperationButtons($('#opsWorkspace'));
+  $$('[data-stock-category]').forEach((button) => {
+    button.onclick = () => {
+      stockCategory = button.dataset.stockCategory;
+      render();
+    };
+  });
   if (view === 'clients')
     $('#clientSearch').oninput = (e) => {
       clientSearch = e.target.value;
@@ -278,7 +290,7 @@ function clientCards() {
       .filter((c) => TrameDomain.matchesClient(c, clientSearch))
       .map(
         (c) =>
-          `<article class="ops-card"><div class="section-heading"><h3>${esc(c.name)}</h3><span class="badge">${c.active === false ? 'Inativo' : 'Ativo'}</span></div><p class="client-seller"><b>Vendedora responsável:</b> ${esc(c.seller || 'Não informada')}</p><p class="notes"><b>CPF / CNPJ:</b> ${esc(c.document || 'Não informado')}</p><p>${esc(c.responsible || 'Sem contato responsável informado')}</p><p class="notes">${esc([c.phone, c.whatsapp, c.email].filter(Boolean).join(' · '))}</p><div class="detail-actions"><button class="secondary" data-action="edit-client" data-id="${esc(c.id)}">Editar cadastro</button><button class="secondary" data-action="client-history" data-id="${esc(c.id)}">Histórico de pedidos</button></div></article>`
+          `<article class="ops-card"><div class="section-heading"><h3>${esc(c.name)}</h3><span class="badge">${c.active === false ? 'Inativo' : 'Ativo'}</span></div><p class="client-seller"><b>Vendedora responsável:</b> ${esc(c.seller || 'Não informada')}</p><p class="notes"><b>CPF / CNPJ:</b> ${esc(c.document || 'Não informado')}</p><p>${esc(c.responsible || 'Sem contato responsável informado')}</p><p class="notes">${esc([c.phone, c.whatsapp, c.email].filter(Boolean).join(' · '))}</p><div class="detail-actions"><button class="secondary" data-action="edit-client" data-id="${esc(c.id)}">Editar cadastro</button><button class="secondary" data-action="client-history" data-id="${esc(c.id)}">Histórico de pedidos</button><button class="secondary" data-delete-scope="clients" data-delete-id="${esc(c.id)}" data-delete-name="${esc(c.name)}">Excluir</button></div></article>`
       )
       .join('') ||
     '<p class="ops-empty">Nenhum cliente encontrado. Pesquise outro nome ou CNPJ, ou cadastre um cliente.</p>'
@@ -388,6 +400,10 @@ function openEmployee(id = null) {
         row = { id: uid() };
         n.employees.push(row);
       }
+      row.category = ready ? 'Produto pronto' : 'Material';
+      if (ready)
+        for (const field of ['productType', 'size', 'color', 'sku'])
+          row[field] = f.elements[field].value.trim();
       row.name = f.elements.name.value.trim();
       row.sector = f.elements.sector.value;
       row.active = f.elements.active.value === 'true';
@@ -457,9 +473,16 @@ function openTask(itemId = null, taskId = null) {
 }
 function openStock(id = null) {
   const s = state.stock.find((s) => s.id === id) || {};
+  const ready = (s.id ? s.category || 'Material' : stockCategory) === 'Produto pronto';
   opsForm(
-    id ? 'Editar material' : 'Cadastrar material',
-    `<div class="form-grid">${inputField('Material', 'name', s.name || '', 'text', 'required maxlength="200"')}${inputField('Unidade (m, un, kg…)', 'unit', s.unit || 'un', 'text', `required maxlength="20" ${id ? 'readonly' : ''}`)}${inputField('Saldo inicial', 'opening', moneyQuantity(s.openingMilli), 'text', `required inputmode="decimal" ${id ? 'readonly' : ''}`)}${inputField('Estoque mínimo', 'minimum', moneyQuantity(s.minimumMilli), 'text', 'required inputmode="decimal"')}${selectField('Situação', 'active', option('true', 'Ativo', s.active !== false ? 'true' : '') + option('false', 'Inativo', s.active === false ? 'false' : ''))}${textField('Observações', 'notes', s.notes || '')}</div><p class="form-note">Quantidades aceitam até três casas decimais, sem separador de milhares. Ajuste saldos posteriores por entrada/saída.</p>`,
+    id
+      ? ready
+        ? 'Editar produto pronto'
+        : 'Editar material'
+      : ready
+        ? 'Cadastrar produto pronto'
+        : 'Cadastrar material',
+    `<div class="form-grid">${inputField(ready ? 'Nome do produto' : 'Material', 'name', s.name || '', 'text', 'required maxlength="200"')}${ready ? selectField('Tipo de produto', 'productType', ['Uniforme', 'Jaleco', 'Camiseta', 'Calça', 'Outro'].map((t) => option(t, t, s.productType || 'Uniforme')).join('')) + inputField('Tamanho', 'size', s.size || '', 'text', 'maxlength="40"') + inputField('Cor', 'color', s.color || '', 'text', 'maxlength="100"') + inputField('Código / referência', 'sku', s.sku || '', 'text', 'maxlength="100"') : ''}${inputField(ready ? 'Unidade (peças)' : 'Unidade (m, un, kg…)', 'unit', ready ? 'un' : s.unit || 'un', 'text', `required maxlength="20" ${id || ready ? 'readonly' : ''}`)}${inputField('Saldo inicial', 'opening', moneyQuantity(s.openingMilli), 'text', `required inputmode="decimal" ${id ? 'readonly' : ''}`)}${inputField('Estoque mínimo', 'minimum', moneyQuantity(s.minimumMilli), 'text', 'required inputmode="decimal"')}${selectField('Situação', 'active', option('true', 'Ativo', s.active !== false ? 'true' : '') + option('false', 'Inativo', s.active === false ? 'false' : ''))}${textField('Observações', 'notes', s.notes || '')}</div><p class="form-note">${ready ? 'Informe quantidades inteiras de peças. Cadastre cada tamanho e cor separadamente. As entradas de produtos prontos são registradas manualmente.' : 'Quantidades aceitam até três casas decimais, sem separador de milhares.'} Ajuste saldos posteriores por entrada/saída.</p>`,
     async (f) => {
       const n = clone();
       let row = n.stock.find((s) => s.id === id);
@@ -472,6 +495,10 @@ function openStock(id = null) {
         };
         n.stock.push(row);
       }
+      row.category = ready ? 'Produto pronto' : 'Material';
+      if (ready)
+        for (const field of ['productType', 'size', 'color', 'sku'])
+          row[field] = f.elements[field].value.trim();
       row.name = f.elements.name.value.trim();
       row.minimumMilli = parseQuantity(f.elements.minimum.value);
       row.notes = f.elements.notes.value.trim();
@@ -513,12 +540,12 @@ function stockHistory(id) {
 function openReservation(itemId = null) {
   const stocks = state.stock.filter((s) => s.active !== false);
   if (!stocks.length || !itemOptions(itemId)) {
-    toast('Cadastre materiais e modelos de pedidos para reservar.', true);
+    toast('Cadastre itens de estoque e modelos de pedidos para reservar.', true);
     return;
   }
   opsForm(
-    'Reservar material',
-    `<div class="form-grid">${selectField('Modelo do pedido', 'itemId', itemOptions(itemId))}${selectField('Material', 'stockId', stocks.map((s) => option(s.id, `${s.name} · livre ${formatQuantity(stockValues(s).available)} ${s.unit}`, '')).join(''))}${inputField('Quantidade a reservar', 'qty', '1', 'text', 'required inputmode="decimal"')}${inputField('Data', 'date', today(), 'date', 'required')}${textField('Observação', 'note', '')}</div><p class="form-note">Reservar reduz o disponível. Consumir reduz o saldo físico; liberar devolve a disponibilidade sem consumir.</p>`,
+    'Reservar material ou produto pronto',
+    `<div class="form-grid">${selectField('Modelo do pedido', 'itemId', itemOptions(itemId))}${selectField('Material ou produto pronto', 'stockId', stocks.map((s) => option(s.id, `${[s.name, s.size, s.color].filter(Boolean).join(' · ')} · livre ${formatQuantity(stockValues(s).available)} ${s.unit}`, '')).join(''))}${inputField('Quantidade a reservar', 'qty', '1', 'text', 'required inputmode="decimal"')}${inputField('Data', 'date', today(), 'date', 'required')}${textField('Observação', 'note', '')}</div><p class="form-note">Reservar reduz o disponível. Consumir reduz o saldo físico; liberar devolve a disponibilidade sem consumir.</p>`,
     async (f) => {
       const n = clone(),
         ref = findItem(f.elements.itemId.value, n);
@@ -959,3 +986,45 @@ function setupOperations() {
     }
   };
 }
+
+function confirmRecordDeletion(scope, id, name, revision) {
+  opsForm(
+    'Confirmar exclusão',
+    `<p>Deseja excluir <strong>${esc(name)}</strong>?</p><p class="notes">O registro será retirado das telas de cadastro e operação. Os históricos e vínculos já registrados serão preservados. Movimentações e recebimentos precisam ser anulados ou corrigidos pelos seus próprios controles.</p><div class="form-grid"><label class="full"><span><input type="checkbox" name="confirmed" required> Estou ciente e confirmo a exclusão deste registro.</span></label></div>`,
+    async (form) => {
+      await TrameAccess.request('/api/records/delete', {
+        scope,
+        id,
+        revision,
+        confirmed: form.elements.confirmed.checked,
+      });
+      $('#detailDialog').close();
+      state = await TrameAccess.request('/api/state');
+      render();
+      toast('Registro excluído.');
+      return true;
+    }
+  );
+  const form = $('#opsForm'),
+    button = form.querySelector('.modal-actions .primary');
+  button.textContent = 'Confirmar exclusão';
+  button.disabled = true;
+  const validate = () => {
+    button.disabled = !form.checkValidity();
+  };
+  form.addEventListener('input', validate);
+  form.addEventListener('change', validate);
+}
+if (typeof document !== 'undefined')
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-delete-scope]');
+    if (!button || button.disabled) return;
+    confirmRecordDeletion(
+      button.dataset.deleteScope,
+      button.dataset.deleteId,
+      button.dataset.deleteName,
+      button.dataset.deleteRevision === undefined
+        ? state.revision
+        : Number(button.dataset.deleteRevision)
+    );
+  });

@@ -1,15 +1,18 @@
 'use strict';
 const TrameAccess = { session: null, ready: null };
 TrameAccess.request = async (path, data) => {
+  const headers = {};
+  if (path === '/api/state' || path === '/api/changes') headers['X-Trame-Layouts'] = 'links';
+  if (data !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    headers['X-CSRF-Token'] = TrameAccess.session?.csrf || '';
+  }
   const r = await fetch(path, {
+    headers,
     ...(data === undefined
       ? {}
       : {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': TrameAccess.session?.csrf || '',
-          },
           body: JSON.stringify(data),
         }),
   });
@@ -28,12 +31,14 @@ TrameAccess.changes = (before, after) => {
   const result = [];
   for (const key of ['orders', 'clients', 'employees', 'stock', 'reservations']) {
     const old = new Map((before[key] || []).map((r) => [r.id, r]));
+    const currentIds = new Set();
     for (const row of after[key] || []) {
+      currentIds.add(row.id);
       const prior = old.get(row.id) || null;
       if (JSON.stringify(prior) !== JSON.stringify(row))
         result.push({ key, id: row.id, before: prior, after: row });
     }
-    if ((before[key] || []).some((r) => !(after[key] || []).some((n) => n.id === r.id)))
+    if ((before[key] || []).some((r) => !currentIds.has(r.id)))
       throw Error('Não é permitido excluir registros.');
   }
   for (const key of ['company', 'warningDays'])
@@ -54,7 +59,9 @@ TrameAccess.permissions = () => {
   }
   if (!admin)
     document
-      .querySelectorAll('[data-action="new-employee"],[data-action="edit-employee"]')
+      .querySelectorAll(
+        '[data-action="new-employee"],[data-action="edit-employee"],[data-delete-scope="employees"]'
+      )
       .forEach((e) => (e.disabled = true));
 };
 TrameAccess.refreshSession = async () => {
@@ -137,13 +144,103 @@ async function accountHome() {
   );
   document.querySelector('#manageAccounts')?.addEventListener('click', accountUsers);
   document.querySelector('#showAudit')?.addEventListener('click', accountAudit);
+  document
+    .querySelector('#accountContent .detail-actions')
+    .insertAdjacentHTML(
+      'beforeend',
+      '<button type="button" class="secondary" id="deleteMyAccount">Excluir minha conta</button>'
+    );
+  document.querySelector('#deleteMyAccount').onclick = accountDelete;
+  if (u.role === 'admin') {
+    const status = document.createElement('p');
+    status.className = 'notes';
+    status.setAttribute('role', 'status');
+    status.textContent = 'Consultando o último backup…';
+    document.querySelector('#accountContent').appendChild(status);
+    try {
+      const backup = await TrameAccess.request('/api/backups');
+      const last = backup.lastSuccess
+        ? new Date(backup.lastSuccess).toLocaleString('pt-BR')
+        : 'nenhuma cópia confirmada';
+      status.textContent = `Último backup: ${last}. ${backup.lastError || 'Cópias verificadas automaticamente. A cópia pode não incluir alterações dos últimos 15 minutos.'}`;
+      if (backup.lastError) status.className = 'account-error';
+    } catch {
+      status.textContent = 'Não foi possível consultar o estado dos backups.';
+      status.className = 'account-error';
+    }
+  }
+}
+function accountDelete() {
+  accountShell(
+    'Excluir minha conta',
+    `
+    <div class="notes" role="note"><strong>Esta ação é permanente.</strong>
+    <p>Seu cadastro de acesso será excluído, você sairá de todos os dispositivos e não poderá recuperar esta conta por e-mail.</p>
+    <p>Pedidos, pagamentos, cadastro de funcionário e registros de ações da empresa serão preservados, inclusive a identificação histórica das ações. Cópias de segurança anteriores podem conter seu cadastro.</p>
+    <p>Se você for o único administrador ativo, cadastre outro administrador antes de continuar.</p></div>
+    <section><h3>Baixar minhas informações</h3><p>Você pode guardar uma cópia do seu perfil e do histórico das suas ações em um arquivo JSON. O arquivo não contém senhas, códigos ou dados de outras contas.</p>
+    <button type="button" class="secondary" id="downloadMyAccount">Baixar informações da minha conta</button><p id="accountDownloadStatus" role="status"></p></section>
+    <form id="deleteAccountForm" class="form-grid">
+      <label class="full">Senha atual<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label>
+      <label class="full"><span><input name="acknowledged" type="checkbox" required> Estou ciente de que a exclusão é permanente e desejo excluir minha conta.</span></label>
+      <div class="modal-actions full"><button type="button" class="secondary" id="cancelDeleteAccount">Cancelar e voltar</button><button type="submit" class="primary" id="confirmDeleteAccount" disabled>Excluir minha conta permanentemente</button></div>
+    </form>`
+  );
+  document.querySelector('#cancelDeleteAccount').onclick = accountHome;
+  document.querySelector('#downloadMyAccount').onclick = async (e) => {
+    const button = e.currentTarget;
+    button.disabled = true;
+    try {
+      const data = await TrameAccess.request('/api/account/export', {});
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'trame-minha-conta.json';
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      document.querySelector('#accountDownloadStatus').textContent =
+        'Download solicitado. Confira o arquivo na pasta de downloads antes de excluir a conta.';
+    } catch (err) {
+      document.querySelector('#accountError').textContent = err.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  const form = document.querySelector('#deleteAccountForm');
+  const button = document.querySelector('#confirmDeleteAccount');
+  const validate = () => {
+    button.disabled = !form.checkValidity();
+  };
+  form.addEventListener('input', validate);
+  form.addEventListener('change', validate);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    if (!form.checkValidity()) return;
+    button.disabled = true;
+    document.querySelector('#accountError').textContent = '';
+    try {
+      await TrameAccess.request('/api/account/delete', {
+        currentPassword: form.elements.currentPassword.value,
+        acknowledged: form.elements.acknowledged.checked,
+      });
+      form.reset();
+      location.replace('/login?deleted=1');
+    } catch (err) {
+      document.querySelector('#accountError').textContent = err.message;
+      validate();
+    }
+  };
 }
 async function accountUsers() {
   try {
     const users = await TrameAccess.request('/api/users');
     accountShell(
       'Acessos dos funcionários',
-      `<p class="notes">Funcionários podem consultar e operar pedidos, orçamentos, pagamentos, produção, entregas, clientes e estoque. O perfil Bordador(a) também acessa serviços avulsos de Bordado e DTF e seus fechamentos mensais. Administradores gerenciam contas, funcionários e configurações.</p><button id="createAccount" class="primary">＋ Criar acesso</button><div class="account-list">${users.map((u) => `<article class="account-person"><div><strong>${esc(u.name)}</strong><small>${esc(u.username)} · ${u.role === 'admin' ? 'Administrador' : u.role === 'embroiderer' ? 'Bordador(a) · Bordado e DTF' : 'Funcionário'} · ${u.active ? 'Ativo' : 'Desativado'}${u.mustChangePassword ? ' · Troca de senha pendente' : ''}</small></div><button class="secondary" data-account="${esc(u.id)}">Gerenciar acesso</button></article>`).join('')}</div>`
+      `<p class="notes">Funcionários podem consultar e operar pedidos, orçamentos, pagamentos, produção, entregas, clientes e estoque. O perfil Bordador(a) também acessa serviços avulsos de Bordado e DTF e seus fechamentos mensais. Administradores gerenciam contas, funcionários e configurações.</p><button id="createAccount" class="primary">＋ Criar acesso</button><div class="account-list">${users.map((u) => `<article class="account-person"><div><strong>${esc(u.name)}</strong><small>${esc(u.username)} · ${u.role === 'admin' ? 'Administrador' : u.role === 'embroiderer' ? 'Bordador(a) · Bordado e DTF' : 'Funcionário'} · ${!u.emailVerified ? 'E-mail pendente de confirmação' : u.active ? 'Ativo' : 'Desativado'}${u.mustChangePassword ? ' · Troca de senha pendente' : ''}</small></div><button class="secondary" data-account="${esc(u.id)}">Gerenciar acesso</button></article>`).join('')}</div>`
     );
     document.querySelector('#createAccount').onclick = () => accountForm();
     document
@@ -160,12 +257,12 @@ function accountForm(user = null) {
     typeof state !== 'undefined' && state ? state.employees.filter((e) => e.active) : [];
   accountShell(
     user ? 'Gerenciar acesso' : 'Criar acesso',
-    `<form id="accountForm" class="form-grid">${!user ? '<label>Nome<input name="name" required maxlength="150" autocomplete="off"></label><label>Login<input name="username" required minlength="3" maxlength="60" pattern="[a-zA-Z0-9._-]+" autocomplete="off"></label><label class="full">Vincular ao funcionário<select name="employeeId"><option value="">Sem vínculo</option>' + employees.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('') + '</select></label>' : `<p class="full notes">${esc(user.name)} · ${esc(user.username)}</p>`}<label>Perfil<select name="role"><option value="employee">Funcionário</option><option value="embroiderer">Bordador(a) — Bordado e DTF</option><option value="admin">Administrador</option></select></label>${user ? '<label>Situação<select name="active"><option value="true">Ativo</option><option value="false">Desativado</option></select></label>' : ''}<label class="full">${user ? 'Nova senha temporária (opcional)' : 'Senha temporária'}<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" ${user ? '' : 'required'}></label><p class="hint full">Ao criar ou redefinir a senha, a pessoa precisará trocá-la no próximo acesso. Alterar uma conta encerra suas sessões abertas.</p><div class="modal-actions full"><button type="button" class="secondary" id="cancelAccountForm">Voltar</button><button class="primary">Salvar acesso</button></div></form>`
+    `<form id="accountForm" class="form-grid">${!user ? '<label>Nome<input name="name" required maxlength="150" autocomplete="off"></label><label>E-mail<input name="email" type="email" required maxlength="254" autocomplete="email"></label><label class="full">Vincular ao funcionário<select name="employeeId"><option value="">Sem vínculo</option>' + employees.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('') + '</select></label>' : `<p class="full notes">${esc(user.name)} · ${esc(user.username)}</p><label class="full">E-mail para acesso e recuperação<input name="email" type="email" required maxlength="254" value="${esc(user.email || '')}" autocomplete="email"></label>`}<label>Perfil<select name="role"><option value="employee">Funcionário</option><option value="embroiderer">Bordador(a) — Bordado e DTF</option><option value="admin">Administrador</option></select></label>${user ? '<label>Situação<select name="active"><option value="true">Ativo</option><option value="false">Desativado</option></select></label>' : ''}<label class="full">${user ? 'Nova senha temporária (opcional)' : 'Senha temporária'}<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" ${user ? '' : 'required'}></label><p class="hint full">Novas contas recebem um código por e-mail e só podem entrar após confirmar. Para reenviar, use Confirmar meu e-mail na tela de entrada. Ao criar ou redefinir a senha, a pessoa precisará trocá-la no próximo acesso. Alterar uma conta encerra suas sessões abertas.</p><div class="modal-actions full"><button type="button" class="secondary" id="cancelAccountForm">Voltar</button><button class="primary">Salvar acesso</button></div></form>`
   );
   const f = document.querySelector('#accountForm');
   if (user) {
     f.elements.role.value = user.role;
-    f.elements.active.value = String(user.active);
+    f.elements.active.value = String(user.enabled ?? user.active);
   }
   f.elements.employeeId?.addEventListener('change', () => {
     const e = employees.find((e) => e.id === f.elements.employeeId.value);

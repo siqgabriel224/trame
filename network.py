@@ -13,6 +13,8 @@ import access
 import cnpj
 import operations
 import services
+import backups
+import layouts
 
 
 def configuration(home):
@@ -83,19 +85,7 @@ def bootstrap(runtime):
 
 
 def backup(runtime):
-    from datetime import date
-
-    folder = runtime.DB.parent / "backups-rede"
-    folder.mkdir(exist_ok=True)
-    target = folder / ("trame-" + date.today().isoformat() + ".sqlite3")
-    if target.exists():
-        return
-    import sqlite3
-
-    temporary = target.with_suffix(".tmp")
-    with closing(runtime.connect()) as src, closing(sqlite3.connect(temporary)) as dst:
-        src.backup(dst)
-    temporary.replace(target)
+    return backups.create(runtime)
 
 
 class AuthenticatedHandler:
@@ -113,6 +103,9 @@ class AuthenticatedHandler:
         return ("https" if tls else "http") + "://" + host
 
     def reply(self, status, value, mime="application/json; charset=utf-8", headers=None):
+        if getattr(self, "_capture_reply", False):
+            self._pending_reply = (status, value, mime, headers)
+            return
         body = (
             json.dumps(value, ensure_ascii=False).encode()
             if not isinstance(value, bytes)
@@ -177,6 +170,7 @@ class AuthenticatedHandler:
                         "user": access.public(user) if user else None,
                         "csrf": user["csrf"] if user else None,
                         "setupNeeded": setup,
+                        "emailDelivery": access.email_status(),
                         "demonstration": os.environ.get("TRAME_DEMO") == "1",
                         "serverUrl": self.runtime.CONFIG["public_url"] or self.authority(),
                     },
@@ -204,6 +198,14 @@ class AuthenticatedHandler:
                         ]
                     },
                 )
+            if path == "/api/backups":
+                if user["role"] != "admin":
+                    return self.reply(403, {"error": "Acesso exclusivo de administradores."})
+                return self.reply(200, backups.status(self.runtime))
+            if path == "/api/thread-colors":
+                if not services.allowed(user):
+                    return self.reply(403, {"error": "Acesso exclusivo ao estoque de bordado."})
+                return self.reply(200, services.thread_palette())
             if path in ("/api/services", "/service-print"):
                 if not services.allowed(user):
                     return self.reply(
@@ -299,6 +301,41 @@ class AuthenticatedHandler:
         return self.reply(200, result)
 
     def do_POST(self):
+        # Libera a transação e o bloqueio antes de acessar o SMTP.
+        self._capture_reply = True
+        self._pending_reply = None
+        response = None
+        try:
+            with access.deferred_mail() as messages:
+                self.handle_post()
+            response = self._pending_reply
+            if (
+                response
+                and response[0] < 400
+                and self.path not in ("/api/activity", "/api/login", "/api/logout")
+            ):
+                backup(self.runtime)
+            if response and response[0] < 400:
+                for email, code, verification in messages:
+                    try:
+                        access.send_recovery(email, code, verification=verification)
+                    except ValueError:
+                        response = (
+                            503,
+                            {
+                                "error": "Não foi possível entregar o e-mail. A solicitação foi salva. Se for uma conta nova ou alteração de e-mail, use Confirmar meu e-mail → Reenviar código após conferir o envio no servidor. Para recuperar a senha, solicite outro código.",
+                                "emailPending": True,
+                            },
+                            "application/json; charset=utf-8",
+                            None,
+                        )
+                        break
+        finally:
+            self._capture_reply = False
+        if response:
+            self.reply(*response)
+
+    def handle_post(self):
         origin = self.authority()
         if not origin or self.headers.get("Origin") != origin:
             # No Windows, fechar com um corpo pendente pode descartar a resposta 403.
@@ -322,6 +359,20 @@ class AuthenticatedHandler:
                 return self.company_lookup(data, client=True)
             with self.runtime.LOCK, closing(self.runtime.connect()) as con:
                 con.execute("BEGIN IMMEDIATE")
+                if self.path in ("/api/email/confirm", "/api/email/resend"):
+                    return self.reply(
+                        200,
+                        access.confirm_email(
+                            con, data, self.client_address[0], resend=self.path.endswith("resend")
+                        ),
+                    )
+                if self.path in ("/api/forgot-password", "/api/reset-password"):
+                    action = (
+                        access.forgot_password
+                        if self.path == "/api/forgot-password"
+                        else access.reset_password
+                    )
+                    return self.reply(200, action(con, data, self.client_address[0]))
                 if self.path == "/api/setup":
                     local = (
                         ipaddress.ip_address(self.client_address[0]).is_loopback
@@ -342,6 +393,7 @@ class AuthenticatedHandler:
                                 "error": "Configuração inicial recusada. Use a chave no computador servidor."
                             },
                         )
+                    access.email_address(data.get("email"))
                     access.create_user(con, data, first=True)
                     con.execute("DELETE FROM access_meta WHERE key='setup'")
                     con.commit()
@@ -368,6 +420,16 @@ class AuthenticatedHandler:
                 if self.path == "/api/activity":
                     con.commit()
                     return self.reply(200, {"ok": True})
+                if self.path == "/api/account/export":
+                    result = access.export_account(con, user)
+                    con.commit()
+                    return self.reply(200, result)
+                if self.path == "/api/account/delete":
+                    access.delete_account(con, user, data)
+                    con.commit()
+                    return self.reply(
+                        200, {"ok": True}, headers={"Set-Cookie": self.session_cookie("", True)}
+                    )
                 if self.path == "/api/logout":
                     con.execute("DELETE FROM sessions WHERE digest=?", (user["digest"],))
                     access.audit(con, user, "Saiu do sistema")
@@ -385,6 +447,7 @@ class AuthenticatedHandler:
                         (access.hash_password(data.get("newPassword")), user["id"]),
                     )
                     con.execute("DELETE FROM sessions WHERE user_id=?", (user["id"],))
+                    con.execute("DELETE FROM password_resets WHERE user_id=?", (user["id"],))
                     access.audit(con, user, "Senha alterada")
                     con.commit()
                     return self.reply(
@@ -394,6 +457,10 @@ class AuthenticatedHandler:
                     return self.reply(
                         403, {"error": "Troque sua senha temporária antes de continuar."}
                     )
+                if self.path == "/api/records/delete":
+                    result = access.delete_record(con, data, user, self.runtime)
+                    con.commit()
+                    return self.reply(200, result)
                 if self.path.startswith("/api/services/"):
                     if not services.allowed(user):
                         return self.reply(
@@ -411,7 +478,13 @@ class AuthenticatedHandler:
                             con.execute("SELECT payload FROM state WHERE id=1").fetchone()[0]
                         )
                     )
-                    if self.path == "/api/services/save":
+                    if self.path == "/api/services/embroidery-stock/save":
+                        result = services.embroidery_stock_save(con, data, user)
+                    elif self.path == "/api/services/embroidery-stock/move":
+                        result = services.embroidery_stock_move(con, data, user)
+                    elif self.path == "/api/services/company/save":
+                        result = services.save_company(con, data, user)
+                    elif self.path == "/api/services/save":
                         result = services.save(con, data, user, business)
                     elif self.path in ("/api/services/receive", "/api/services/void-receipt"):
                         result = services.receive(
@@ -424,15 +497,12 @@ class AuthenticatedHandler:
                     else:
                         return self.reply(404, {"error": "Operação de serviço não encontrada."})
                     con.commit()
-                    try:
-                        backup(self.runtime)
-                    except OSError as exc:
-                        print("Falha no backup diário:", exc, flush=True)
                     return self.reply(200, result)
                 if self.path in ("/api/users/create", "/api/users/update"):
                     if user["role"] != "admin":
                         return self.reply(403, {"error": "Acesso exclusivo de administradores."})
                     if self.path.endswith("create"):
+                        access.email_address(data.get("email"))
                         employee = data.get("employeeId")
                         if employee and not any(
                             e["id"] == employee and e.get("active", True)
@@ -452,6 +522,8 @@ class AuthenticatedHandler:
                     "SELECT revision,payload FROM state WHERE id=1"
                 ).fetchone()
                 old = self.runtime.defaults(dict(json.loads(payload), revision=revision))
+                if self.headers.get("X-Trame-Layouts") == "links":
+                    layouts.restore_submission(data, old, changes=self.path == "/api/changes")
                 if self.path == "/api/changes":
                     candidate = access.apply_changes(old, data.get("changes"))
                     summary = ", ".join(
@@ -470,6 +542,7 @@ class AuthenticatedHandler:
                                     "error": "Somente administradores alteram empresa, configurações ou funcionários."
                                 },
                             )
+                access.preserve_excluded(candidate, old)
                 operations.sign_changes(candidate, old, user)
                 clean = self.runtime.validate(candidate, old)
                 con.execute(
@@ -478,11 +551,10 @@ class AuthenticatedHandler:
                 )
                 access.audit(con, user, "Dados alterados", f"Revisão {revision + 1}: " + summary)
                 con.commit()
-                try:
-                    backup(self.runtime)
-                except OSError as exc:
-                    print("Falha no backup diário:", exc, flush=True)
-                return self.reply(200, dict(clean, revision=revision + 1))
+                visible = access.visible_state(dict(clean, revision=revision + 1))
+                if self.headers.get("X-Trame-Layouts") == "links":
+                    visible = layouts.compact(visible)
+                return self.reply(200, visible)
         except access.Conflict as exc:
             self.reply(409, {"error": str(exc)})
         except (ValueError, KeyError, TypeError, AttributeError, OverflowError) as exc:

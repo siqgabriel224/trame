@@ -119,7 +119,7 @@ function orderRow(order) {
     <td>${approval}</td>
     <td>${brl(values.total)}<div><span class="badge ${paymentClass}">${order.kind === 'quote' ? 'Orçamento' : values.status}</span></div></td>
     <td><span class="badge ${done(order) ? 'good' : ''}">${stage(order)}</span></td>
-    <td><div class="order-row-actions"><button class="secondary" data-edit-order="${esc(order.id)}" ${order.archived ? 'disabled' : ''}>Editar</button><button class="open-btn" data-open="${esc(order.id)}" aria-label="Abrir ${docLabel(order)} de ${esc(order.client)}">↗</button></div></td>
+    <td><div class="order-row-actions"><button class="secondary" data-edit-order="${esc(order.id)}" ${order.archived ? 'disabled' : ''}>Editar</button><button class="secondary" data-delete-scope="orders" data-delete-id="${esc(order.id)}" data-delete-name="${esc(docLabel(order) + ' · ' + order.client)}">Excluir</button><button class="open-btn" data-open="${esc(order.id)}" aria-label="Abrir ${docLabel(order)} de ${esc(order.client)}">↗</button></div></td>
   </tr>`;
 }
 
@@ -275,7 +275,7 @@ function renderDetail() {
   const expanded = $$('#detailContent details[open]').map((d) => d.dataset.itemId);
   const detailScroll = $('#detailDialog').scrollTop;
   $('#detailContent').innerHTML =
-    `<div class="modal-top"><div><div class="eyebrow">${docLabel(o)} ${o.archived ? '· ARQUIVADO' : ''}</div><h2>${esc(o.client)}</h2></div><button class="icon" id="closeDetail" aria-label="Fechar detalhes">×</button></div><p class="notes">${esc(o.description)}</p><div class="detail-meta"><div><small>Entrada</small>${dateLabel(o.entry)}</div><div><small>Entrega</small>${dateLabel(o.due)} ${o.due.slice(0, 4)}</div><div><small>Situação</small>${stage(o)}</div><div><small>Quantidade total</small>${o.items.reduce((n, i) => n + total(i), 0)} peças</div><div>${dueBadge(o)}</div></div>${o.notes ? `<p class="notes">${esc(o.notes)}</p>` : ''}<div class="detail-actions"><button class="primary" id="addItem" ${o.archived ? 'disabled' : ''}>＋ Adicionar modelo</button><button class="secondary" id="editOrder">Editar pedido</button><button class="secondary" id="archiveOrder">${o.archived ? 'Restaurar pedido' : 'Arquivar pedido'}</button></div>${detailCommerce(o)}<h2>Modelos de peças <span>${o.items.length}</span></h2>${
+    `<div class="modal-top"><div><div class="eyebrow">${docLabel(o)} ${o.archived ? '· ARQUIVADO' : ''}</div><h2>${esc(o.client)}</h2></div><button class="icon" id="closeDetail" aria-label="Fechar detalhes">×</button></div><p class="notes">${esc(o.description)}</p><div class="detail-meta"><div><small>Entrada</small>${dateLabel(o.entry)}</div><div><small>Entrega</small>${dateLabel(o.due)} ${o.due.slice(0, 4)}</div><div><small>Situação</small>${stage(o)}</div><div><small>Quantidade total</small>${o.items.reduce((n, i) => n + total(i), 0)} peças</div><div>${dueBadge(o)}</div></div>${o.notes ? `<p class="notes">${esc(o.notes)}</p>` : ''}<div class="detail-actions"><button class="primary" id="addItem" ${o.archived ? 'disabled' : ''}>＋ Adicionar modelo</button><button class="secondary" id="editOrder">Editar pedido</button><button class="secondary" data-delete-scope="orders" data-delete-id="${esc(o.id)}" data-delete-name="${esc(docLabel(o) + ' · ' + o.client)}">Excluir</button><button class="secondary" id="archiveOrder">${o.archived ? 'Restaurar pedido' : 'Arquivar pedido'}</button></div>${detailCommerce(o)}<h2>Modelos de peças <span>${o.items.length}</span></h2>${
       o.items.length
         ? o.items
             .map(
@@ -287,7 +287,7 @@ function renderDetail() {
                   .map(([s, n]) => `${esc(s)}: ${n}`)
                   .join(
                     ' · '
-                  )}</p>${i.madeToMeasure || i.sizes['Sob medida'] ? `<p class="preserve"><b>Sob medida:</b> ${esc(i.measurements)}</p>` : ''}${techniqueDescription(i)}<p><b>Preço:</b> ${brl(itemFinancial(i).unit)} / peça · <b>Total:</b> ${brl(itemFinancial(i).total)}</p>${i.customizations ? `<p><b>Personalizações:</b> ${esc(i.customizations)}</p>` : ''}${i.notes ? `<p class="notes">${esc(i.notes)}</p>` : ''}</div></div><div class="item-controls"><button class="${i.approved ? 'secondary' : 'primary'}" data-approve="${esc(i.id)}" ${o.archived || i.stage !== 'Aguardando' ? 'disabled' : ''}>${i.approved ? 'Retirar aprovação' : 'Confirmar aprovação'}</button><select data-stage="${esc(i.id)}" aria-label="Andamento de ${esc(i.type)}" ${o.archived ? 'disabled' : ''}>${['Aguardando', 'Em produção', 'Pronto', 'Entregue'].map((s) => `<option ${i.stage === s ? 'selected' : ''} ${s === 'Entregue' || (s === 'Pronto' && i.stage !== 'Pronto' && !(i.tasks?.length && i.tasks.every((t) => t.signature))) || (s !== 'Aguardando' && (!i.approved || o.kind === 'quote')) ? 'disabled' : ''}>${s}</option>`).join('')}</select><button class="secondary" data-edit-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>Editar modelo</button></div></article>`
+                  )}</p>${i.madeToMeasure || i.sizes['Sob medida'] ? `<p class="preserve"><b>Sob medida:</b> ${esc(i.measurements)}</p>` : ''}${techniqueDescription(i)}<p><b>Preço:</b> ${brl(itemFinancial(i).unit)} / peça · <b>Total:</b> ${brl(itemFinancial(i).total)}</p>${i.customizations ? `<p><b>Personalizações:</b> ${esc(i.customizations)}</p>` : ''}${i.notes ? `<p class="notes">${esc(i.notes)}</p>` : ''}</div></div><div class="item-controls"><button class="${i.approved ? 'secondary' : 'primary'}" data-approve="${esc(i.id)}" ${o.archived || i.stage !== 'Aguardando' ? 'disabled' : ''}>${i.approved ? 'Retirar aprovação' : 'Confirmar aprovação'}</button><select data-stage="${esc(i.id)}" aria-label="Andamento de ${esc(i.type)}" ${o.archived ? 'disabled' : ''}>${['Aguardando', 'Em produção', 'Pronto', 'Entregue'].map((s) => `<option ${i.stage === s ? 'selected' : ''} ${s === 'Entregue' || (s === 'Pronto' && i.stage !== 'Pronto' && !(i.tasks?.length && i.tasks.every((t) => t.signature))) || (s !== 'Aguardando' && (!i.approved || o.kind === 'quote')) ? 'disabled' : ''}>${s}</option>`).join('')}</select><button class="secondary" data-edit-item="${esc(i.id)}" ${o.archived ? 'disabled' : ''}>Editar modelo</button><button class="secondary" data-delete-scope="items" data-delete-id="${esc(i.id)}" data-delete-name="${esc(i.type + ' · ' + o.client)}">Excluir modelo</button></div></article>`
             )
             .join('')
         : '<div class="empty"><p>Adicione o primeiro modelo, com tecido, cor e grade de tamanhos.</p></div>'
@@ -476,7 +476,8 @@ $('#itemForm').onsubmit = async (e) => {
     i = { id: uid(), stage: 'Aguardando', approved: false };
     o.items.push(i);
   }
-  if (i.image !== itemImage) i.approved = false;
+  const layoutToSave = itemImage;
+  if (!(await TrameDomain.sameLayout(i.image, layoutToSave))) i.approved = false;
   ['type', 'description', 'fabric', 'color', 'customizations', 'notes'].forEach(
     (k) => (i[k] = f.elements[k].value.trim())
   );
@@ -490,7 +491,7 @@ $('#itemForm').onsubmit = async (e) => {
   i.measurements = f.elements.measurements.value.trim();
   if (i.madeToMeasure && (!i.measurements || Number($('#bespokeSizes input').value) < 1))
     return toast('Informe as medidas e a quantidade de peças sob medida.', true);
-  i.image = itemImage;
+  i.image = layoutToSave;
   i.sizes = Object.fromEntries(
     $$('#sizes input:not(:disabled), #bespokeSizes input:not(:disabled)').map((x) => [
       x.dataset.size,

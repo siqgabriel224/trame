@@ -1,6 +1,80 @@
 'use strict';
 // Regras de cálculo compartilhadas pela aplicação e pelos documentos impressos.
 const TrameDomain = (() => {
+  // O grupo organiza o filtro; a amostra vem do código Zenith.
+  let zenithPalette = new Map(),
+    zenithAliases = {};
+  const setThreadPalette = (palette) => {
+    zenithPalette = new Map(
+      Object.entries(palette.colors || {})
+        .filter(([, value]) => /^#[0-9a-f]{6}$/i.test(value.hex || ''))
+        .map(([code, value]) => [code, { ...value, code }])
+    );
+    zenithAliases = { ...palette.aliases };
+  };
+  const threadColor = (code) => {
+    code = String(code || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '');
+    return zenithPalette.get(zenithAliases[code] || code) || null;
+  };
+  const stockReference = (item) =>
+    (item.category || 'Linha') === 'Linha' && (!item.brand || item.brand.toLowerCase() === 'zenith')
+      ? threadColor(item.code)
+      : null;
+  const threadColors = Object.freeze([
+    ['Branco', '#f4f2e9', ['branco', 'branca', 'off white', 'off-white', 'offwhite']],
+    ['Preto', '#292d2b', ['preto', 'preta']],
+    ['Cinza', '#89918f', ['cinza', 'grafite', 'prata']],
+    ['Bege', '#c8ae87', ['bege', 'natural', 'cru', 'areia']],
+    ['Amarelo', '#e3bd3e', ['amarelo', 'amarela', 'mostarda']],
+    ['Laranja', '#db813b', ['laranja', 'coral']],
+    ['Vermelho', '#b84547', ['vermelho', 'vermelha', 'vinho', 'bordo']],
+    ['Rosa', '#d98fa8', ['rosa', 'pink', 'salmao']],
+    ['Roxo', '#8a6aa4', ['roxo', 'roxa', 'lilas', 'violeta']],
+    ['Azul', '#4b83ae', ['azul', 'ciano', 'turquesa']],
+    ['Verde', '#48845b', ['verde', 'esmeralda', 'oliva']],
+    ['Marrom', '#88664f', ['marrom', 'castanho', 'cafe']],
+    ['Dourado', '#baa05a', ['dourado', 'dourada', 'ouro']],
+    ['Multicor', '#b1a2b2', ['multicor', 'mesclada', 'mesclado']],
+  ]);
+  const foldStockText = (value) =>
+    String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  const stockColorFamily = (color) => {
+    const value = foldStockText(color);
+    const known = threadColors.find(([, , names]) =>
+      names.some((name) => new RegExp(`(^|[\\s/-])${name}($|[\\s/-])`).test(value))
+    );
+    return known?.[0] || String(color || '').trim() || 'Sem cor';
+  };
+  const stockColorHex = (item) => stockReference(item)?.hex || '#dce3de';
+  const stockFamily = (item) => stockColorFamily(item.color || stockReference(item)?.family);
+  const stockLabel = (item) =>
+    [item.category || 'Insumo', item.color, item.code].filter(Boolean).join(' · ');
+  const matchesSupply = (item, query) =>
+    foldStockText(
+      `${item.code || ''} ${item.color || ''} ${item.category || ''} ${item.name || ''}`
+    ).includes(foldStockText(query));
+  const sameLayout = async (previous = '', next = '') => {
+    if (previous === next) return true;
+    if (next.startsWith('/api/layout?')) [previous, next] = [next, previous];
+    if (!previous.startsWith('/api/layout?') || !next.startsWith('data:image/')) return false;
+    try {
+      const expected = new URLSearchParams(previous.split('?')[1]).get('v');
+      const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(next));
+      const digest = [...new Uint8Array(bytes)]
+        .map((value) => value.toString(16).padStart(2, '0'))
+        .join('');
+      return digest === expected;
+    } catch {
+      return false;
+    }
+  };
   const matchesClient = (client, query) => {
     const fold = (value) =>
       String(value || '')
@@ -139,6 +213,16 @@ const TrameDomain = (() => {
     return { onHand, reserved, available: onHand - reserved };
   }
   return Object.freeze({
+    setThreadPalette,
+    threadColor,
+    stockReference,
+    stockFamily,
+    threadColors,
+    stockColorFamily,
+    stockColorHex,
+    stockLabel,
+    matchesSupply,
+    sameLayout,
     matchesClient,
     serviceTotal,
     quantityInput,

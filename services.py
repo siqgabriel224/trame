@@ -4,14 +4,31 @@ import copy
 from datetime import date, datetime, timezone
 import json
 import re
+from functools import lru_cache
+from pathlib import Path
 from uuid import uuid4
 
 import access
 
 TECHNIQUES = ("Bordado", "DTF")
-STATUSES = ("Recebido", "Em execução", "Concluído", "Entregue", "Cancelado")
+STATUSES = ("Recebido", "Em execução", "Em andamento", "Concluído", "Entregue", "Cancelado")
 UNITS = ("peça", "metro", "aplicação", "lote")
 METHODS = ("Pix", "Dinheiro", "Transferência", "Cartão", "Boleto", "Outro")
+
+
+@lru_cache(maxsize=1)
+def thread_palette():
+    return json.loads(
+        (Path(__file__).resolve().parent / "web" / "zenith-colors.json").read_text(encoding="utf-8")
+    )
+
+
+def thread_color(code):
+    code = re.sub(r"[\s-]+", "", str(code or "").upper())
+    palette = thread_palette()
+    code = palette.get("aliases", {}).get(code, code)
+    color = palette["colors"].get(code)
+    return dict(color, code=code) if color else None
 
 
 def schema(con):
@@ -24,11 +41,232 @@ def schema(con):
     CREATE TABLE IF NOT EXISTS service_closings (
       technique TEXT NOT NULL, month TEXT NOT NULL, revision INTEGER NOT NULL,
       payload TEXT NOT NULL, PRIMARY KEY(technique,month));
+    CREATE TABLE IF NOT EXISTS service_companies (
+      id TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS embroidery_stock (
+      id TEXT PRIMARY KEY, revision INTEGER NOT NULL, payload TEXT NOT NULL);
     """)
 
 
 def allowed(user):
     return user["role"] in ("admin", "embroiderer")
+
+
+def embroidery_inventory(con):
+    rows = [
+        json.loads(r[0]) for r in con.execute("SELECT payload FROM embroidery_stock ORDER BY id")
+    ]
+    return [
+        dict(
+            row,
+            balanceMilli=row["openingMilli"]
+            + sum(m["qtyMilli"] * (1 if m["kind"] == "Entrada" else -1) for m in row["movements"]),
+        )
+        for row in rows
+        if not row.get("_deleted")
+    ]
+
+
+def embroidery_stock_save(con, data, actor):
+    incoming = data.get("item")
+    if not isinstance(incoming, dict):
+        raise ValueError("Informe o insumo de bordado.")
+    sid = incoming.get("id")
+    old = (
+        con.execute("SELECT revision,payload FROM embroidery_stock WHERE id=?", (sid,)).fetchone()
+        if sid
+        else None
+    )
+    if sid and not old:
+        raise ValueError("Insumo não encontrado.")
+    check_revision(old[0] if old else 0, data.get("revision", 0))
+    prior = json.loads(old[1]) if old else None
+    if prior and prior.get("_deleted"):
+        raise ValueError("Insumo excluído.")
+    category = incoming.get("category")
+    if category not in (
+        "Linha",
+        "Bobina",
+        "Entretela",
+        "Agulha",
+        "Estabilizador",
+        "Acessório",
+        "Outro",
+    ):
+        raise ValueError("Selecione o tipo de insumo de bordado.")
+    row = {
+        key: text(
+            incoming.get(key, prior.get(key, "") if prior else ""), label, limit, key == "unit"
+        )
+        for key, label, limit in [
+            ("name", "o nome do insumo", 200),
+            ("unit", "a unidade", 20),
+            ("brand", "a marca", 100),
+            ("color", "a cor", 100),
+            ("code", "o código ou número da cor", 100),
+            ("supplier", "o fornecedor", 150),
+            ("notes", "as observações", 3000),
+        ]
+    }
+    if category == "Linha" and not row["brand"]:
+        row["brand"] = "Zenith"
+    color_hex = incoming.get("colorHex", prior.get("colorHex", "") if prior else "")
+    if not isinstance(color_hex, str) or (
+        color_hex and not re.fullmatch(r"#[0-9a-fA-F]{6}", color_hex)
+    ):
+        raise ValueError("Selecione uma amostra de cor válida.")
+    row["colorHex"] = color_hex.lower()
+    reference = (
+        thread_color(row["code"])
+        if category == "Linha" and row["brand"].casefold() == "zenith"
+        else None
+    )
+    row["colorSource"] = ""
+    if reference:
+        row["colorHex"] = reference["hex"]
+        row["colorSource"] = thread_palette()["version"]
+        if not row["color"]:
+            row["color"] = reference["family"]
+    if not row["name"]:
+        row["name"] = " · ".join(value for value in (category, row["color"], row["code"]) if value)[
+            :200
+        ]
+    opening = integer(incoming.get("openingMilli"), "Saldo inicial")
+    minimum = integer(incoming.get("minimumMilli", 0), "Estoque mínimo")
+    if prior and (row["unit"] != prior["unit"] or opening != prior["openingMilli"]):
+        raise ValueError(
+            "Saldo inicial e unidade são preservados. Ajuste o saldo por entrada ou saída."
+        )
+    active = incoming.get("active", prior.get("active", True) if prior else True)
+    if type(active) is not bool:
+        raise ValueError("Situação inválida.")
+    row.update(
+        id=sid or str(uuid4()),
+        revision=(old[0] if old else 0) + 1,
+        category=category,
+        active=active,
+        openingMilli=opening,
+        minimumMilli=minimum,
+        movements=prior["movements"] if prior else [],
+    )
+    con.execute(
+        "INSERT INTO embroidery_stock VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload",
+        (row["id"], row["revision"], json.dumps(row, ensure_ascii=False)),
+    )
+    access.audit(con, actor, "Insumo de bordado salvo", row["name"])
+    return row
+
+
+def embroidery_stock_move(con, data, actor):
+    found = con.execute(
+        "SELECT revision,payload FROM embroidery_stock WHERE id=?", (data.get("id"),)
+    ).fetchone()
+    if not found:
+        raise ValueError("Insumo não encontrado.")
+    check_revision(found[0], data.get("revision"))
+    row = json.loads(found[1])
+    if row.get("_deleted"):
+        raise ValueError("Insumo excluído.")
+    if not row["active"]:
+        raise ValueError("Reative o insumo antes de movimentar.")
+    kind = data.get("kind")
+    qty = integer(data.get("qtyMilli"), "Quantidade")
+    if kind not in ("Entrada", "Saída") or not qty:
+        raise ValueError("Informe entrada ou saída e quantidade maior que zero.")
+    when = date.fromisoformat(data.get("date", ""))
+    if when > date.today():
+        raise ValueError("A movimentação não pode ter data futura.")
+    reason = text(data.get("reason"), "o motivo da movimentação", 1000, True)
+    balance = row["openingMilli"] + sum(
+        m["qtyMilli"] * (1 if m["kind"] == "Entrada" else -1) for m in row["movements"]
+    )
+    if balance + (qty if kind == "Entrada" else -qty) < 0:
+        raise ValueError("Estoque de bordado insuficiente para esta saída.")
+    row["movements"].append(
+        dict(
+            id=str(uuid4()),
+            kind=kind,
+            qtyMilli=qty,
+            date=when.isoformat(),
+            reason=reason,
+            recordedBy=actor["name"],
+        )
+    )
+    row["revision"] += 1
+    con.execute(
+        "UPDATE embroidery_stock SET revision=?,payload=? WHERE id=?",
+        (row["revision"], json.dumps(row, ensure_ascii=False), row["id"]),
+    )
+    access.audit(con, actor, "Estoque de bordado movimentado", row["name"] + " · " + kind)
+    return row
+
+
+OWN_COMPANY = "__own_company__"
+
+
+def companies(con, business):
+    own = business.get("company", {})
+    rows = [
+        {
+            "id": OWN_COMPANY,
+            "name": own.get("tradeName") or own.get("name") or "Minha empresa",
+            "document": own.get("document", ""),
+            "active": True,
+            "kind": "internal",
+            "revision": 0,
+        }
+    ]
+    rows.extend(
+        row
+        for row in (
+            json.loads(r[0])
+            for r in con.execute("SELECT payload FROM service_companies ORDER BY id")
+        )
+        if not row.get("_deleted")
+    )
+    return rows
+
+
+def save_company(con, data, actor):
+    incoming = data.get("company")
+    if not isinstance(incoming, dict):
+        raise ValueError("Informe os dados da empresa.")
+    cid = incoming.get("id")
+    old = (
+        con.execute("SELECT revision,payload FROM service_companies WHERE id=?", (cid,)).fetchone()
+        if cid
+        else None
+    )
+    if cid and not old:
+        raise ValueError("Empresa de Bordado/DTF não encontrada.")
+    if old and json.loads(old[1]).get("_deleted"):
+        raise ValueError("Empresa excluída.")
+    check_revision(old[0] if old else 0, data.get("revision", 0))
+    row = {
+        key: text(incoming.get(key, ""), label, limit, key == "name")
+        for key, label, limit in [
+            ("name", "o nome da empresa", 200),
+            ("document", "o CNPJ", 30),
+            ("phone", "o telefone", 60),
+            ("email", "o e-mail", 254),
+            ("contact", "o contato responsável", 150),
+            ("notes", "as observações", 3000),
+        ]
+    }
+    if row["email"]:
+        row["email"] = access.email_address(row["email"])
+    active = incoming.get("active", True)
+    if type(active) is not bool:
+        raise ValueError("Situação da empresa inválida.")
+    row.update(
+        id=cid or str(uuid4()), revision=(old[0] if old else 0) + 1, active=active, kind="external"
+    )
+    con.execute(
+        "INSERT INTO service_companies VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,payload=excluded.payload",
+        (row["id"], row["revision"], json.dumps(row, ensure_ascii=False)),
+    )
+    access.audit(con, actor, "Empresa de serviços salva", row["name"])
+    return row
 
 
 def text(value, label, limit=3000, required=False):
@@ -65,7 +303,12 @@ def period(job):
 
 
 def amounts(job):
-    total = (job["qtyMilli"] * job["unitCents"] + 500) // 1000 + job["setupCents"]
+    total = (
+        sum((line["qtyMilli"] * line["unitCents"] + 500) // 1000 for line in job["lines"])
+        if "lines" in job
+        else (job["qtyMilli"] * job["unitCents"] + 500) // 1000
+    )
+    total += job["setupCents"]
     received = sum(p["amountCents"] for p in job.get("payments", []) if not p.get("voided"))
     return dict(
         totalCents=total,
@@ -82,7 +325,10 @@ def read_job(con, jid):
     row = con.execute("SELECT payload FROM service_jobs WHERE id=?", (jid,)).fetchone()
     if not row:
         raise ValueError("Serviço não encontrado. Atualize a lista.")
-    return json.loads(row[0])
+    job = json.loads(row[0])
+    if job.get("_deleted"):
+        raise ValueError("Serviço excluído.")
+    return job
 
 
 def read_closing(con, kind, selected_month):
@@ -116,7 +362,42 @@ def save(con, data, actor, business):
     if not isinstance(incoming, dict):
         raise ValueError("Informe os dados do serviço.")
     previous = read_job(con, incoming["id"]) if incoming.get("id") else None
+    if previous and "lines" in previous and "lines" not in incoming:
+        raise ValueError("Preserve a lista de bordados ou aplicações ao editar o serviço.")
     kind = technique(incoming.get("technique"))
+    lines = None
+    if "lines" in incoming:
+        if not isinstance(incoming["lines"], list) or not 1 <= len(incoming["lines"]) <= 100:
+            raise ValueError("Informe de 1 a 100 bordados ou aplicações no serviço.")
+        lines = []
+        for line in incoming["lines"]:
+            if not isinstance(line, dict):
+                raise ValueError("Item do serviço inválido.")
+            qty = integer(line.get("qtyMilli"), "Quantidade", 10000000)
+            if not qty:
+                raise ValueError("Cada item precisa de quantidade maior que zero.")
+            lines.append(
+                dict(
+                    description=text(
+                        line.get("description"),
+                        "a descrição de cada bordado ou aplicação",
+                        500,
+                        True,
+                    ),
+                    qtyMilli=qty,
+                    unitCents=integer(line.get("unitCents"), "Valor unitário"),
+                )
+            )
+        incoming = dict(
+            incoming,
+            description=lines[0]["description"],
+            qtyMilli=sum(line["qtyMilli"] for line in lines),
+            unitCents=0,
+            unit=incoming.get("unit", "peça"),
+        )
+        due = date.fromisoformat(incoming.get("dueDate", ""))
+        if due < date.fromisoformat(incoming.get("entryDate", "")):
+            raise ValueError("O prazo não pode ser anterior à data de entrada.")
     if previous:
         check_revision(previous["revision"], data.get("revision"))
         if previous["technique"] != kind:
@@ -125,13 +406,13 @@ def save(con, data, actor, business):
             raise ValueError(
                 "Este serviço pertence a um fechamento. Peça ao administrador para reabrir o mês antes de corrigir."
             )
-    clients = {c["id"]: c for c in business["clients"]}
-    client = clients.get(incoming.get("clientId"))
+    clients = {c["id"]: c for c in companies(con, business)}
+    client = clients.get(incoming.get("companyId") or incoming.get("clientId"))
     if not client or (
         client.get("active", True) is False
         and (not previous or previous["clientId"] != client["id"])
     ):
-        raise ValueError("Selecione um cliente cadastrado e ativo.")
+        raise ValueError("Selecione uma empresa cadastrada e ativa.")
     status = incoming.get("status", "Recebido")
     if status not in STATUSES or incoming.get("unit") not in UNITS:
         raise ValueError("Situação ou unidade do serviço inválida.")
@@ -139,6 +420,7 @@ def save(con, data, actor, business):
         key: text(incoming.get(key, ""), label, limit, required)
         for key, label, limit, required in (
             ("description", "a descrição do serviço", 500, True),
+            ("orderNumber", "o número do pedido", 60, False),
             ("seller", "a vendedora responsável", 200, False),
             ("reference", "a matriz ou referência do arquivo", 300, False),
             ("details", "os detalhes de execução", 3000, False),
@@ -155,11 +437,20 @@ def save(con, data, actor, business):
     employee = next((e for e in business["employees"] if e["id"] == employee_id), None)
     if employee_id and not employee:
         raise ValueError("Responsável pelo serviço não encontrado.")
-    if status in ("Em execução", "Concluído", "Entregue") and (
-        not employee or employee.get("active", True) is False
+    if (
+        lines is None
+        and status in ("Em execução", "Concluído", "Entregue")
+        and (not employee or employee.get("active", True) is False)
     ):
         raise ValueError("Defina um funcionário ativo como responsável pela execução.")
     if status in ("Concluído", "Entregue"):
+        if lines is not None:
+            completed = (
+                previous.get("completedDate")
+                if previous and eligible(previous)
+                else date.today().isoformat()
+            )
+            completed = completed or date.today().isoformat()
         done = date.fromisoformat(completed)
         if done < entry or done > date.today():
             raise ValueError("A conclusão deve estar entre a entrada e a data de hoje.")
@@ -168,6 +459,8 @@ def save(con, data, actor, business):
     job.update(
         technique=kind,
         clientId=client["id"],
+        companyId=client["id"],
+        companyKind=client.get("kind", "external"),
         client=client["name"],
         document=client.get("document", ""),
         seller=job["seller"] or client.get("seller", ""),
@@ -182,10 +475,12 @@ def save(con, data, actor, business):
         setupCents=integer(incoming.get("setupCents", 0), "Preparação"),
         payments=copy.deepcopy(previous.get("payments", [])) if previous else [],
     )
+    if lines is not None:
+        job.update(lines=lines, dueDate=due.isoformat())
     values = amounts(job)
     if values["receivedCents"] > values["totalCents"]:
         raise ValueError("O valor do serviço não pode ficar abaixo dos recebimentos registrados.")
-    if eligible(job) and values["totalCents"] <= 0:
+    if eligible(job) and values["totalCents"] <= 0 and client["id"] != OWN_COMPANY:
         raise ValueError("Informe o valor do serviço antes de concluir.")
     if status == "Cancelado" and values["receivedCents"]:
         raise ValueError("Anule os recebimentos com motivo antes de cancelar o serviço.")
@@ -276,10 +571,19 @@ def listing(con, kind, selected_month, business):
             (kind, selected_month),
         )
     ]
+    jobs = [j for j in jobs if not j.get("_deleted")]
+    registered = {OWN_COMPANY} | {row[0] for row in con.execute("SELECT id FROM service_companies")}
+    for job in jobs:
+        if (job.get("companyId") or job["clientId"]) not in registered:
+            # Exibição de históricos anteriores sem importar clientes para o cadastro.
+            job["companyId"] = OWN_COMPANY
     return {
         "jobs": jobs,
         "closing": read_closing(con, kind, selected_month),
         "company": business.get("company", {}),
+        "companies": companies(con, business),
+        "companyIds": sorted(registered),
+        "embroideryStock": embroidery_inventory(con) if kind == "Bordado" else [],
     }
 
 
@@ -357,6 +661,14 @@ def close(con, data, actor, business, reopen=False):
 
 def export(con):
     return {
+        "embroideryStock": [
+            json.loads(r[0])
+            for r in con.execute("SELECT payload FROM embroidery_stock ORDER BY id")
+        ],
+        "companies": [
+            json.loads(r[0])
+            for r in con.execute("SELECT payload FROM service_companies ORDER BY id")
+        ],
         "jobs": [
             json.loads(r[0])
             for r in con.execute("SELECT payload FROM service_jobs ORDER BY technique,number")

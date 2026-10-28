@@ -2,11 +2,9 @@
 
 # Tramê
 
-**Do orçamento à entrega, cada peça tem seu caminho.**
-
 O Tramê acompanha pedidos de confecção: cliente, modelos, grades, layouts, produção e recebimentos ficam no mesmo lugar. O projeto nasceu da rotina de trabalho com bordado e personalização de roupas.
 
-Aplicação local em português, com servidor Python, SQLite e interface em HTML, CSS e JavaScript. Cada funcionário acessa com usuário e senha. O uso local não depende de serviços externos.
+Aplicação local em português, com servidor Python, SQLite e interface em HTML, CSS e JavaScript. Cada funcionário acessa com usuário e senha. A rotina de pedidos é local; o cadastro e a recuperação de acessos por e-mail exigem uma conta remetente configurada e internet.
 
 **Estado:** em desenvolvimento. As verificações automatizadas cobrem regras comerciais, autenticação e persistência. A avaliação na rotina de uma empresa continua pendente.
 
@@ -38,7 +36,7 @@ No Windows, dê dois cliques em **Abrir Trame.cmd**. Também é possível abrir 
 python iniciar.py
 ```
 
-O programa abre `http://127.0.0.1:18743`. Na primeira execução, use a chave criada em `dados/chave-primeiro-acesso.txt` para cadastrar o administrador. Não existe usuário ou senha padrão. A chave perde a utilidade depois da configuração inicial.
+O programa abre `http://127.0.0.1:18743`. Na primeira execução, use a chave criada em `dados/chave-primeiro-acesso.txt` para cadastrar o administrador. Antes de cadastrar o primeiro administrador, configure a conta remetente de e-mail e confira com `python iniciar.py --verificar-email`; veja [cadastro por e-mail](docs/RECUPERACAO-EMAIL.md). O cadastro e a recuperação exigem envio de e-mail; a operação diária de contas já confirmadas continua local. Não existe usuário ou senha padrão. A chave perde a utilidade depois da configuração inicial.
 
 Mantenha o terminal aberto durante o uso. Para encerrar, pressione **Ctrl+C** nele. Fechar a aba do navegador não encerra o servidor.
 
@@ -85,12 +83,12 @@ Os testes usam bancos temporários. O verificador confere também a sintaxe Java
 
 - [Arquitetura e regras de negócio](docs/ARQUITETURA.md)
 - [Instalação, atualização e backup](docs/OPERACAO.md)
+- [Desempenho, layouts e medição com dados fictícios](docs/DESEMPENHO.md)
 - [Demonstração com histórico fictício](docs/DEMONSTRACAO.md)
 - [Grades, medidas, edição e execução da OS](docs/FLUXO-DA-OS.md)
 - [Clientes, serviços avulsos e fechamento mensal de Bordado/DTF](docs/SERVICOS-AVULSOS.md)
 - [Como contribuir](CONTRIBUTING.md)
 - [Cuidados com dados e segurança](SECURITY.md)
-- [Notas desta preparação](docs/ENTREGA.md)
 - [Resultados e limites da validação](docs/VALIDACAO.md)
 
 ## Telas

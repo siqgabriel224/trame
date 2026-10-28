@@ -253,6 +253,25 @@ def validate(data, old, cents, money):
         if not employee.get("name", "").strip() or employee.get("sector") not in SECTORS:
             raise ValueError("Informe nome e setor do funcionário.")
     for sid, stock in stocks.items():
+        category = stock.get("category", "Material")
+        if category not in ("Material", "Produto pronto"):
+            raise ValueError("Selecione Material ou Produto pronto.")
+        text(stock, ["productType", "size", "color", "sku"])
+        if category == "Produto pronto":
+            if (
+                stock.get("productType") not in ("Uniforme", "Jaleco", "Camiseta", "Calça", "Outro")
+                or stock.get("unit") != "un"
+            ):
+                raise ValueError("Produtos prontos precisam de tipo e unidade un.")
+            amounts = [stock.get("openingMilli"), stock.get("minimumMilli", 0)] + [
+                m.get("qtyMilli") for m in stock.get("movements", [])
+            ]
+            if any(type(n) is not int or n % 1000 for n in amounts):
+                raise ValueError("Produtos prontos usam quantidades inteiras de peças.")
+        if sid in old_stocks and category != old_stocks[sid].get("category", "Material"):
+            raise ValueError(
+                "A categoria do estoque existente é preservada. Cadastre outro item para mudar a categoria."
+            )
         if type(stock.get("active", True)) is not bool:
             raise ValueError("Situação do material inválida.")
         text(stock, ["name", "unit", "notes"])
@@ -513,6 +532,10 @@ def validate(data, old, cents, money):
         if reservation.get("stockId") not in stocks or reservation.get("itemId") not in items:
             raise ValueError("Selecione material e modelo existentes para reservar.")
         order, item = items[reservation["itemId"]]
+        if stocks[reservation["stockId"]].get("category") == "Produto pronto" and (
+            type(reservation.get("qtyMilli")) is not int or reservation["qtyMilli"] % 1000
+        ):
+            raise ValueError("A reserva de produtos prontos usa quantidades inteiras de peças.")
         if order["id"] != reservation.get("orderId") or order["kind"] == "quote":
             raise ValueError("A reserva deve estar vinculada a um modelo de pedido.")
         if integer(reservation.get("qtyMilli")) == 0 or reservation.get("stage") not in [

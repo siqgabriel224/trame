@@ -7,6 +7,13 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PRIVATE_FOLDERS = {
     "dados",
+    ".claude",
+    ".claude-flow",
+    ".codex",
+    ".swarm",
+    ".validacao",
+    ".ruff_cache",
+    ".pytest_cache",
     ".demo",
     "certificados",
     "node_modules",

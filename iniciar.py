@@ -26,10 +26,24 @@ def open_when_ready(url, stopped):
 def main():
     parser = argparse.ArgumentParser(description="Tramê — pedidos e produção neste computador.")
     parser.add_argument("--sem-navegador", action="store_true", help="Inicia somente o servidor.")
+    parser.add_argument(
+        "--verificar-email",
+        action="store_true",
+        help="Verifica conexão e credenciais de e-mail, sem enviar mensagens nem iniciar o servidor.",
+    )
     parser.add_argument("--porta", type=int, default=18743, help="Porta local (padrão: 18743).")
     args = parser.parse_args()
     if not 1024 <= args.porta <= 65535:
         parser.error("A porta deve estar entre 1024 e 65535.")
+    if args.verificar_email:
+        import access
+
+        try:
+            access.check_email_connection()
+        except ValueError as exc:
+            parser.exit(1, str(exc) + "\n")
+        print("Conexão de e-mail verificada. Nenhuma mensagem foi enviada.")
+        return
 
     # Configuração aplicada antes de importar o servidor, que resolve o ambiente ao carregar.
     os.environ["TRAME_LOCAL_ONLY"] = "1"

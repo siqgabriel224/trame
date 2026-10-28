@@ -11,6 +11,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, build_opener, HTTPCookieProcessor
+from unittest.mock import patch
 import access
 import network
 import server
@@ -23,6 +24,34 @@ class Client:
         self.csrf = ""
 
     def request(self, path, data=None, origin=True, csrf=True):
+        # Older fixtures use username-only accounts. Provision them through the
+        # new email confirmation flow while preserving their login identifiers.
+        if (
+            path in ("/api/setup", "/api/users/create")
+            and isinstance(data, dict)
+            and data.get("username")
+            and "email" not in data
+        ):
+            payload = dict(data, email=data["username"] + "@example.test")
+            with (
+                patch("access.send_recovery") as send,
+                patch.dict(
+                    "os.environ",
+                    {
+                        "TRAME_SMTP_HOST": "smtp.example.test",
+                        "TRAME_SMTP_FROM": "sender@example.test",
+                    },
+                ),
+            ):
+                response = self.request(path, payload, origin=origin, csrf=csrf)
+            if response[0] == 200 and send.called:
+                confirmation = self.request(
+                    "/api/email/confirm",
+                    {"email": payload["email"], "code": send.call_args.args[1]},
+                )
+                if confirmation[0] != 200:
+                    raise AssertionError("Fixture email confirmation failed")
+            return response
         headers = {}
         if data is not None:
             headers["Content-Type"] = "application/json"

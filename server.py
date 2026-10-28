@@ -7,6 +7,8 @@ import os
 import sqlite3
 import socket
 import threading
+import time
+from collections import OrderedDict
 from contextlib import closing
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,6 +20,7 @@ import access
 import network
 import operations
 import services
+import layouts
 from vendor.qrencoder import QRCode
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -26,6 +29,10 @@ CONFIG = network.configuration(HOME)
 DB = Path(os.environ.get("RADAR_DB", str(HOME / "dados" / "radar.sqlite3")))
 PORT = CONFIG["port"]
 LOCK = threading.Lock()
+_SCHEMA_LOCK = threading.Lock()
+_SCHEMAS = OrderedDict()
+_STATE_CACHE_LOCK = threading.Lock()
+_STATE_CACHE = None
 STAGES = ["Aguardando", "Em produção", "Pronto", "Entregue"]
 TECHNIQUES = ["Bordado", "Silk", "DTF"]
 METHODS = [
@@ -80,7 +87,7 @@ def item_money(item):
 
 
 def money(order):
-    subtotal = sum(item_money(i) for i in order["items"])
+    subtotal = sum(item_money(i) for i in order["items"] if not i.get("_deleted"))
     total = subtotal + order.get("freightCents", 0) - order.get("discountCents", 0)
     received = sum(
         p["amountCents"] for p in order.get("payments", []) if not p.get("voided", False)
@@ -113,23 +120,62 @@ def connect():
     DB.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB, timeout=20)
     con.execute("PRAGMA busy_timeout=20000")
-    access.schema(con)
-    services.schema(con)
-    con.execute(
-        "CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY, revision INTEGER, payload TEXT)"
-    )
-    con.execute(
-        "INSERT OR IGNORE INTO state VALUES (1, 0, ?)",
-        (json.dumps({"orders": [], "warningDays": 3}),),
-    )
-    con.commit()
+    try:
+        # Refaz as migrações quando o arquivo ou a versão do banco muda.
+        with _SCHEMA_LOCK:
+            identity = DB.stat()
+            version = con.execute("PRAGMA schema_version").fetchone()[0]
+            key = (str(DB.resolve()), identity.st_dev, identity.st_ino, version)
+            if key not in _SCHEMAS:
+                access.schema(con)
+                services.schema(con)
+                con.execute(
+                    "CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY, revision INTEGER, payload TEXT)"
+                )
+                con.execute(
+                    "INSERT OR IGNORE INTO state VALUES (1, 0, ?)",
+                    (json.dumps({"orders": [], "warningDays": 3}),),
+                )
+                con.commit()
+                version = con.execute("PRAGMA schema_version").fetchone()[0]
+                key = (str(DB.resolve()), identity.st_dev, identity.st_ino, version)
+                _SCHEMAS[key] = True
+                while len(_SCHEMAS) > 16:
+                    _SCHEMAS.popitem(last=False)
+            _SCHEMAS.move_to_end(key)
+    except BaseException:
+        con.close()
+        raise
     return con
 
 
-def read_state():
+def _read_snapshot(revision_only=False):
+    """Internal read-only snapshot. Compare payload too, including external imports
+    that replaced data without incrementing its revision. Keep just one DB cached.
+    """
+    global _STATE_CACHE
     with closing(connect()) as con:
+        identity = DB.stat()
+        prefix = (str(DB.resolve()), identity.st_dev, identity.st_ino)
+        if revision_only:
+            revision = con.execute("SELECT revision FROM state WHERE id=1").fetchone()[0]
+            with _STATE_CACHE_LOCK:
+                if _STATE_CACHE is not None and _STATE_CACHE[0][:4] == prefix + (revision,):
+                    return _STATE_CACHE[1]
         revision, payload = con.execute("SELECT revision,payload FROM state WHERE id=1").fetchone()
-    return defaults(dict(json.loads(payload), revision=revision))
+    key = prefix + (revision, payload)
+    with _STATE_CACHE_LOCK:
+        if _STATE_CACHE is None or _STATE_CACHE[0] != key:
+            _STATE_CACHE = (
+                key,
+                access.visible_state(defaults(dict(json.loads(payload), revision=revision))),
+            )
+        return _STATE_CACHE[1]
+
+
+def read_state():
+    # Cada requisição recebe uma cópia independente.
+    return copy.deepcopy(_read_snapshot())
 
 
 def validate(data, old):
@@ -281,6 +327,7 @@ def validate(data, old):
             ):
                 raise ValueError("A grade precisa ter pelo menos uma peça e quantidades inteiras.")
             image = item.get("image", "")
+            prior = previous.get(iid)
             if not isinstance(image, str) or len(image) > 7000000:
                 raise ValueError("Imagem muito grande. Use até 5 MB.")
             if image:
@@ -288,11 +335,11 @@ def validate(data, old):
                     ("data:image/png;base64,", "data:image/jpeg;base64,", "data:image/webp;base64,")
                 ):
                     raise ValueError("Use imagens PNG, JPEG ou WebP.")
-                try:
-                    base64.b64decode(image.split(",", 1)[1], validate=True)
-                except Exception:
-                    raise ValueError("Imagem inválida.")
-            prior = previous.get(iid)
+                if not prior or prior.get("image", "") != image:
+                    try:
+                        base64.b64decode(image.split(",", 1)[1], validate=True)
+                    except Exception:
+                        raise ValueError("Imagem inválida.")
             if prior is None and (item["approved"] or item["stage"] != "Aguardando"):
                 raise ValueError("Novos itens devem aguardar aprovação.")
             if prior and prior.get("image", "") != image:
@@ -369,6 +416,19 @@ class TrameHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     tls_context = None
 
+    def service_actions(self):
+        # Executa o backup periódico fora do loop de atendimento HTTP.
+        now = time.monotonic()
+        if not hasattr(self, "_backup_next"):
+            self._backup_next = now + network.backups.INTERVAL_SECONDS
+        worker = getattr(self, "_backup_worker", None)
+        if now >= self._backup_next and not (worker and worker.is_alive()):
+            self._backup_next = now + network.backups.INTERVAL_SECONDS
+            self._backup_worker = threading.Thread(
+                target=network.backup, args=(self.RequestHandlerClass.runtime,), daemon=True
+            )
+            self._backup_worker.start()
+
     def server_bind(self):
         if os.name == "nt":
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
@@ -401,7 +461,24 @@ class Handler(network.AuthenticatedHandler, BaseHTTPRequestHandler):
         if path == "/health":
             return self.reply(200, {"status": "ok", "app": "radar-pedidos", "version": 5})
         if path == "/api/state":
-            return self.reply(200, read_state())
+            if self.headers.get("X-Trame-Layouts") == "links":
+                state = layouts.compact(_read_snapshot())
+            else:
+                state = read_state()
+            return self.reply(200, state)
+        if path == "/api/layout":
+            params = parse_qs(urlsplit(self.path).query)
+            image = layouts.read(
+                _read_snapshot(revision_only=True),
+                params.get("order", [""])[0],
+                params.get("item", [""])[0],
+                params.get("v", [""])[0],
+                params.get("snapshot", [""])[0],
+            )
+            if image is None:
+                return self.reply(404, {"error": "Layout não encontrado. Atualize o pedido."})
+            mime, content = image
+            return self.reply(200, content, mime)
         if path == "/domain.js":
             return self.reply(
                 200, (ROOT / "web" / "domain.js").read_bytes(), "text/javascript; charset=utf-8"

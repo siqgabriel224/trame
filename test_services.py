@@ -4,6 +4,8 @@ import unittest
 import services
 import server
 import test_review
+import json
+from contextlib import closing
 from test_network import Client
 
 
@@ -32,6 +34,21 @@ class ServiceHTTP(unittest.TestCase):
         data["revision"] = 0
         status, result, _ = self.client.request("/api/state", data)
         self.assertEqual(status, 200, result)
+        # Service clients have their own registry, independent of garment clients.
+        with closing(server.connect()) as con:
+            company = dict(
+                id="c",
+                name="Cliente de serviços",
+                document="12.345.678/0001-90",
+                seller="Vendedora teste",
+                kind="external",
+                active=True,
+                revision=1,
+            )
+            con.execute(
+                "INSERT INTO service_companies VALUES(?,?,?)", ("c", 1, json.dumps(company))
+            )
+            con.commit()
         return result
 
     def job(self, **changes):

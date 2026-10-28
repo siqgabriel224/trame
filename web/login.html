@@ -20,11 +20,11 @@
       <p id="loginIntro">Use o acesso fornecido pelo administrador da empresa.</p>
       <form id="loginForm">
         <label
-          >Login<input
+          >E-mail ou login antigo<input
             name="username"
             autocomplete="username"
             required
-            maxlength="60"
+            maxlength="254"
             autofocus /></label
         ><label
           >Senha<input
@@ -39,13 +39,13 @@
         <label>Chave de primeiro acesso<input name="token" autocomplete="off" required /></label
         ><label>Seu nome<input name="name" autocomplete="name" required maxlength="150" /></label
         ><label
-          >Login do administrador<input
-            name="username"
+          >E-mail do administrador<input
+            type="email"
+            name="email"
             autocomplete="username"
             required
             minlength="3"
-            maxlength="60"
-            pattern="[a-zA-Z0-9._-]+" /></label
+            maxlength="254" /></label
         ><label
           >Senha<input
             name="password"
@@ -92,7 +92,77 @@
         ><button type="button" id="cancelPassword" class="quiet">Sair desta conta</button>
       </form>
       <p id="loginMessage" role="status" aria-live="polite"></p>
-      <p class="login-help" id="loginHelp">Esqueceu a senha? Peça uma nova ao administrador.</p>
+      <p>
+        <button type="button" class="quiet" id="openEmailConfirmation">Confirmar meu e-mail</button>
+      </p>
+      <form id="emailConfirmationForm" hidden>
+        <label
+          >E-mail cadastrado<input
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            maxlength="254"
+        /></label>
+        <label
+          >Código recebido<input name="code" autocomplete="one-time-code" required maxlength="64"
+        /></label>
+        <button type="submit">Confirmar e ativar minha conta</button>
+        <button type="button" class="quiet" id="resendEmailCode">Reenviar código</button>
+        <a href="/login">Voltar para entrar</a>
+      </form>
+      <p class="login-help" id="loginHelp">
+        <button type="button" id="forgotPassword" class="quiet">Esqueci minha senha</button>
+      </p>
+      <form id="recoveryForm" hidden>
+        <label
+          >E-mail cadastrado<input
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            maxlength="254"
+        /></label>
+        <button type="submit">Enviar código por e-mail</button>
+        <button type="button" id="haveCode" class="quiet">Já tenho um código</button>
+        <a href="/login">Voltar para entrar</a>
+      </form>
+      <form id="resetForm" hidden>
+        <label
+          >E-mail cadastrado<input
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            maxlength="254"
+        /></label>
+        <label
+          >Código recebido por e-mail<input
+            name="code"
+            autocomplete="one-time-code"
+            required
+            maxlength="64"
+        /></label>
+        <label
+          >Nova senha<input
+            name="newPassword"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="128"
+        /></label>
+        <label
+          >Confirmar senha<input
+            name="confirm"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="128"
+        /></label>
+        <button type="submit">Redefinir senha</button><a href="/login">Voltar para entrar</a>
+      </form>
     </main>
   </body>
 </html>
