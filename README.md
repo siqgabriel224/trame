@@ -77,7 +77,7 @@ python scripts/verificar.py
 npm run format:check
 ```
 
-Os testes usam bancos temporários. O verificador confere também a sintaxe JavaScript e a lista de arquivos preparados para publicação. O GitHub Actions executa a mesma verificação em Windows e Linux.
+Os testes ficam em `tests/` e usam bancos temporários. Para executar apenas os testes Python, use `python -m unittest discover -s tests -t . -v`; para JavaScript, `npm test`. O verificador confere também a sintaxe JavaScript e a lista de arquivos preparados para publicação. O GitHub Actions executa a mesma verificação em Windows e Linux.
 
 ## Documentação
 

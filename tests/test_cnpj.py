@@ -5,8 +5,8 @@ from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
 import cnpj
-from test_network import Client
-import test_network
+from tests.test_network import Client
+from tests import test_network
 
 DOCUMENT = "19131243000197"
 PUBLIC = {

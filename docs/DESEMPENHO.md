@@ -32,6 +32,6 @@ Na versão otimizada, a mesma medição comparou a leitura sem cache com a leitu
 
 ## Verificações e limites
 
-`test_performance.py` cobre autenticação das imagens, exportação completa, salvamentos com links, conflitos, rejeição de uploads inválidos, impressão do orçamento histórico após troca de layout, invalidação do cache e troca de arquivo/schema. `test_layouts.cjs` verifica que o mesmo arquivo não perde a aprovação. A suíte de comparação de alterações também verifica que listas grandes não causam varreduras quadráticas na detecção de exclusões.
+`tests/test_performance.py` cobre autenticação das imagens, exportação completa, salvamentos com links, conflitos, rejeição de uploads inválidos, impressão do orçamento histórico após troca de layout, invalidação do cache e troca de arquivo/schema. `tests/test_layouts.cjs` verifica que o mesmo arquivo não perde a aprovação. A suíte de comparação de alterações também verifica que listas grandes não causam varreduras quadráticas na detecção de exclusões.
 
 O banco ainda grava o estado comercial como JSON. Esta etapa reduz transferência, processamento repetido e buscas; não elimina o custo de regravar um histórico muito grande. Separar entidades e anexos no armazenamento e paginar o histórico continuam como evolução de arquitetura, a ser medida em uma base de teste maior. Nunca substitua o SQLite enquanto o Tramê estiver aberto: encerre o aplicativo para manutenção/restauração e reinicie para carregar a nova cópia.

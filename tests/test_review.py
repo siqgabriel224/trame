@@ -7,9 +7,9 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 import server
 import network
-from test_network import Client
+from tests.test_network import Client
 from remove_examples import clean_examples, DEMO_ORDERS, DEMO_REGISTRY
-from test_operations import fixture
+from tests.test_operations import fixture
 
 
 class ReviewRules(unittest.TestCase):
@@ -197,7 +197,7 @@ class HTTPReview(unittest.TestCase):
         self.assertEqual(json.loads(body)["revision"], 0)
 
     def test_authenticated_completion_stamps_and_preserves_signature(self):
-        from test_operations import Operations
+        from tests.test_operations import Operations
 
         data = Operations().task_fixture()
         data["revision"] = 0

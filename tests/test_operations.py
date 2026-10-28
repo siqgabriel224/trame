@@ -2,7 +2,7 @@ import copy
 import unittest
 import server
 import operations
-from test_radar import sample
+from tests.test_radar import sample
 
 
 def fixture():

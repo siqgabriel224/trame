@@ -25,10 +25,10 @@ def main():
     run([ruff, "format", "--check", "."])
     # Proxies corporativos não devem interceptar o HTTP local dos testes.
     os.environ["NO_PROXY"] = "127.0.0.1,localhost,::1"
-    run([sys.executable, "-m", "unittest", "discover", "-v"])
+    run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", ".", "-v"])
     for source in sorted((ROOT / "web").glob("*.js")):
         run([node, "--check", str(source)])
-    for suite in sorted(ROOT.glob("test_*.cjs")):
+    for suite in sorted((ROOT / "tests").glob("test_*.cjs")):
         run([node, str(suite)])
     run([sys.executable, str(ROOT / "scripts" / "conferir_publicacao.py")])
     print("\nVerificação concluída.")

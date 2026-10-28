@@ -8,7 +8,7 @@ from pathlib import Path
 from http.server import ThreadingHTTPServer
 import server
 import network
-from test_network import Client
+from tests.test_network import Client
 
 
 class EmailVerification(unittest.TestCase):

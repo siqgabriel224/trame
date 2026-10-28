@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import server
 import access
-from test_radar import sample
+from tests.test_radar import sample
 
 
 def measure(action, count):

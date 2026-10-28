@@ -2,7 +2,7 @@ import sqlite3
 import unittest
 
 import access
-from test_network import NetworkFlow
+from tests.test_network import NetworkFlow
 
 
 class AccountDeletion(unittest.TestCase):

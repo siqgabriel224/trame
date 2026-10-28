@@ -3,9 +3,9 @@ import unittest
 from datetime import date
 import services
 import operations
-import test_services
-import test_operations
-from test_network import Client
+from tests import test_services
+from tests import test_operations
+from tests.test_network import Client
 
 
 class ServiceCompanies(unittest.TestCase):

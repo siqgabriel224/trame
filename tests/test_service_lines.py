@@ -1,6 +1,6 @@
 import unittest
 from datetime import date, timedelta
-import test_services
+from tests import test_services
 
 
 class ServiceLines(unittest.TestCase):

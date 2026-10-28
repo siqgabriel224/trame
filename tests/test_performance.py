@@ -13,8 +13,8 @@ from unittest.mock import patch
 import access
 import layouts
 import server
-import test_network
-from test_radar import sample
+from tests import test_network
+from tests.test_radar import sample
 
 IMAGE = "data:image/png;base64,bGF5b3V0"
 

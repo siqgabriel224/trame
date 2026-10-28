@@ -3,10 +3,10 @@ import unittest
 
 import services
 import server
-import test_review
+from tests import test_review
 import json
 from contextlib import closing
-from test_network import Client
+from tests.test_network import Client
 
 
 class ServiceHTTP(unittest.TestCase):

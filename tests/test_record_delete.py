@@ -1,8 +1,8 @@
 import json
 import unittest
-import test_review
-import test_operations
-from test_network import Client
+from tests import test_review
+from tests import test_operations
+from tests.test_network import Client
 import server
 from contextlib import closing
 from datetime import date

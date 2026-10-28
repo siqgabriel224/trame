@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
-import test_services
-from test_network import Client
+from tests import test_services
+from tests.test_network import Client
 
 
 class EmbroideryStock(unittest.TestCase):

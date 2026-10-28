@@ -10,7 +10,7 @@ from unittest.mock import patch
 import access
 import backups
 import server
-import test_network
+from tests import test_network
 
 
 class EmailConfiguration(unittest.TestCase):
