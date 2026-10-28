@@ -447,6 +447,7 @@ class TLSConfiguration(unittest.TestCase):
                         (root / "certificados/autoridade.cer").read_bytes()
                     )
                     trusted = ssl.create_default_context(cadata=ca)
+                    trusted.verify_flags |= ssl.VERIFY_X509_STRICT
                     from urllib.request import HTTPSHandler
 
                     client = Client(f"https://localhost:{http.server_port}")
