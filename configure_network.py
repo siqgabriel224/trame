@@ -48,7 +48,9 @@ def configure(home, hostname, address, port=18743):
         .not_valid_before(now - timedelta(minutes=5))
         .not_valid_after(now + timedelta(days=1095))
         .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
-        .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
+        .add_extension(
+            x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False
+        )
         .add_extension(
             x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False
         )
